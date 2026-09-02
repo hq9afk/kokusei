@@ -1,0 +1,150 @@
+#pragma once
+
+#include <string>
+#include <vector>
+
+#include "render/icon.h"
+#include "render/icons.h"
+#include "render/node.h"
+#include "render/palette.h"
+#include "render/rect.h"
+#include "render/renderer.h"
+#include "render/text.h"
+#include "render/texture.h"
+#include "render/texture_cache.h"
+
+constexpr float kPanelWidth = 320.0f;
+constexpr float kPanelPadding = 20.0f;
+constexpr float kPanelHeaderHeight = 32.0f;
+constexpr float kPanelHeaderDividerGap = 4.0f;
+constexpr float kPanelContentGap = 8.0f;
+constexpr float kPanelGap = 8.0f;
+constexpr float kPanelMaxHeight = 520.0f;
+constexpr float kPanelActionButtonSize = 22.0f;
+constexpr float kPanelListSpacing = 5.0f;
+constexpr float kPanelRowGap = 6.0f;
+constexpr float kPanelRowIconGap = 8.0f;
+constexpr float kPanelRowActionGap = 4.0f;
+constexpr float kPanelTightGap = 4.0f;
+constexpr float kPanelDeviceRowHeight = 50.0f;
+constexpr float kPanelDialogButtonPaddingH = 16.0f;
+constexpr float kPanelConfirmButtonSize = 28.0f;
+constexpr float kPanelSubPanelRowHeight = 28.0f;
+constexpr float kPanelSubPanelTopMargin = 6.0f;
+constexpr float kPanelDialogSpacerHeight = 14.0f;
+constexpr float kPanelTrailingSpacerHeight = 4.0f;
+constexpr float kPanelSubLabelHeight = 20.0f;
+constexpr float kPanelSideMargin = 20.0f;
+
+inline constexpr float kPanelNoBorder[4] = {0, 0, 0, 0};
+
+enum class PanelClickKind {
+    Close,
+    HeaderToggle,
+    HeaderAction,
+    ErrorClose,
+    RowConnect,
+    RowForget,
+    SubClose,
+    SubConfirm,
+    SubCancel,
+    SliderDrag,
+    MuteToggle,
+    DeviceSelect,
+    TrayActivate,
+    TrayOpenMenu,
+    TrayMenuBack,
+    TrayMenuEntry,
+    TabSelect,
+    ToggleFlip,
+    FieldFocus,
+    ExpanseSelect,
+    MonitorSelect,
+    RegionSelect,
+    AnimatedExpanseSelect,
+    AnimatedRegionSelect,
+    MediaPlayPause,
+    MediaNext,
+    MediaPrevious,
+    ProfileTrulla,
+};
+struct PanelClickRegion {
+    PanelClickKind kind;
+    Rect rect;
+    std::string tag;
+};
+
+bool panel_region_hit(const std::vector<PanelClickRegion> &click_regions,
+                      double x, double y);
+
+namespace panel_chrome_detail {
+
+const Texture *cached_text(TextureCache &cache, const std::string &s,
+                           int32_t scale);
+
+const Texture *cached_icon(TextureCache &cache, const char *codepoint,
+                           int32_t scale);
+
+const Texture *cached_text_clipped(TextureCache &cache, const std::string &s,
+                                   int32_t scale, int max_width_px);
+
+const Texture *cached_text_large(TextureCache &cache, const std::string &s,
+                                 int32_t scale);
+
+} // namespace panel_chrome_detail
+
+Node *panel_draw_box(Node *parent, float x, float y, float w, float h,
+                     float border_width = metrics::border_thin);
+
+float panel_draw_header(Node *parent, TextureCache &cache, int32_t scale,
+                        const std::string &title, float panel_x, float panel_y,
+                        float panel_w,
+                        std::vector<PanelClickRegion> &click_regions);
+
+void panel_draw_row_text(Node *tclip, const Texture *name_tex,
+                         const Texture *sub_tex, float row_h,
+                         const float *name_color, const float *sub_color);
+
+void panel_draw_centered_text(Node *clip, TextureCache &cache, int32_t scale,
+                              const std::string &text, float box_x, float box_y,
+                              float box_w, float box_h, const float *color);
+
+Rect panel_draw_toggle_switch(Node *parent,
+                              std::vector<PanelClickRegion> &click_regions,
+                              float x, float y, float track_w, float track_h,
+                              float knob_size, float knob_inset, bool active,
+                              PanelClickKind click_kind,
+                              const std::string &tag);
+
+struct PanelRowActionLayout {
+    float actions_w = 0.0f;
+    const Texture *busy_tex = nullptr;
+    const Texture *action_tex = nullptr;
+    float connect_btn_w = 0.0f;
+};
+
+PanelRowActionLayout panel_measure_row_actions(TextureCache &cache,
+                                               int32_t scale, bool is_connected,
+                                               bool is_busy, bool show_forget);
+
+void panel_draw_row_actions(Node *clip, TextureCache &cache, int32_t scale,
+                            std::vector<PanelClickRegion> &click_regions,
+                            const PanelRowActionLayout &layout, float content_x,
+                            float content_w, float y, float row_h,
+                            float rx_origin, float ry_origin, bool is_connected,
+                            bool is_busy, bool show_forget,
+                            const std::string &row_tag);
+
+float panel_confirm_subpanel_height();
+
+float panel_draw_subpanel_top(Node *parent, TextureCache &cache, int32_t scale,
+                              const std::string &top_label, float panel_x,
+                              float sub_y, float panel_w, float sub_h,
+                              std::vector<PanelClickRegion> &click_regions);
+
+void panel_draw_confirm_subpanel(Node *parent, TextureCache &cache,
+                                 int32_t scale, const std::string &top_label,
+                                 const std::string &prompt,
+                                 const std::string &confirm_label,
+                                 float panel_x, float sub_y, float panel_w,
+                                 std::vector<PanelClickRegion> &click_regions);

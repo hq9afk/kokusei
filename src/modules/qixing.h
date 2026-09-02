@@ -1,0 +1,146 @@
+#pragma once
+
+#include <EGL/egl.h>
+#include <chrono>
+#include <memory>
+#include <string>
+#include <wayland-client.h>
+#include <wayland-egl.h>
+
+#include "app/monitor_output.h"
+#include "app/per_monitor_module.h"
+#include "app/text_input_client.h"
+#include "app/wayland_state.h"
+
+#include "modules/qixing/panel/battery_panel.h"
+#include "modules/qixing/panel/bluetooth_panel.h"
+#include "modules/qixing/panel/clock_panel.h"
+#include "modules/qixing/panel/network_panel.h"
+#include "modules/qixing/panel/system_monitor_panel.h"
+#include "modules/qixing/panel/tray_panel.h"
+#include "modules/qixing/panel/volume_panel.h"
+#include "modules/qixing/widget/widget_capsule.h"
+#include "modules/qixing/widget/workspace_widget.h"
+
+#include "render/renderer.h"
+#include "render/texture.h"
+
+#include "wlr-layer-shell-unstable-v1-client-protocol.h"
+
+struct QixingPerMonitorState {
+    WidgetCapsuleState capsule;
+    WorkspaceWidgetState workspace_widget;
+    NetworkPanelState network_panel;
+    BluetoothPanelState bluetooth_panel;
+    VolumePanelState volume_panel;
+    TrayPanelState tray_panel;
+    TrayMenuState tray_menu;
+    BatteryPanelState battery_panel;
+    SystemMonitorPanelState system_monitor_panel;
+    ClockPanelState clock_panel;
+
+    Texture clock_texture;
+    Rect clock_rect;
+    Texture starward_texture;
+    Texture liyue_texture;
+    Texture tray_texture;
+    Texture cpu_texture;
+    Texture yuheng_texture;
+    Texture battery_icon_texture;
+    const char *battery_icon_glyph = nullptr;
+    Texture wifi_icon_texture;
+    const char *wifi_icon_glyph_cached = nullptr;
+    Texture bluetooth_icon_texture;
+    const char *bluetooth_icon_glyph_cached = nullptr;
+    Texture volume_icon_texture;
+    const char *volume_icon_glyph_cached = nullptr;
+
+    bool volume_peek_active = false;
+    bool volume_peek_ready = false;
+    std::chrono::steady_clock::time_point volume_peek_started_at =
+        std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point volume_peek_deadline{};
+    float volume_peek_last_level = -1.0f;
+    bool volume_peek_last_muted = false;
+};
+
+class QixingPerMonitorModule final : public PerMonitorModule,
+                                     public TextInputClient {
+  public:
+    QixingPerMonitorState state;
+
+    bool create_surface(WaylandState &app, MonitorOutput &mon,
+                        wl_output *output) override;
+    bool configured() const override;
+    bool init_egl(WaylandState &app, MonitorOutput &mon) override;
+
+    TextInputState text_input_state() const override;
+    void text_input_apply_edit(const TextInputEdit &edit) override;
+    void text_input_reset_preedit() override;
+    void text_input_activated(TextInputService &) override {}
+    void text_input_deactivated(TextInputService &) override;
+    void destroy(WaylandState &app, MonitorOutput &mon) override;
+    bool owns_surface(wl_surface *surface) const override;
+    void request_frame() override;
+    void tick(WaylandState &app, MonitorOutput &mon) override;
+    void timer_tick(WaylandState &app, MonitorOutput &mon) override;
+    bool is_open() const override;
+    void handle_click(WaylandState &app, MonitorOutput &mon,
+                      wl_surface *surface, int button, double x, double y,
+                      uint32_t serial) override;
+    void handle_scroll(WaylandState &app, MonitorOutput &mon,
+                       wl_surface *surface, double dy) override;
+    void handle_key_event(WaylandState &app, MonitorOutput &mon,
+                          const KeyEvent &event) override;
+    void handle_pointer_move(WaylandState &app, MonitorOutput &mon, double x,
+                             double y) override;
+    void handle_pointer_release() override;
+    bool wants_pointing_hand_cursor() const override;
+
+  private:
+    MonitorOutput *mon_ = nullptr;
+    int poll_tick_ = 0;
+    double pointer_x_ = -1, pointer_y_ = -1;
+};
+
+QixingPerMonitorState &qixing_state(MonitorOutput &mon);
+
+namespace qixing_detail {
+
+void qixing_autohide_set_surface_geometry(
+    zwlr_layer_surface_v1 *layer_surface, wl_surface *surface,
+    wl_egl_window *egl_window, int32_t width, int32_t height_px,
+    int32_t margin_top, int32_t margin_right, int32_t margin_left,
+    int32_t exclusive_zone, int32_t output_scale);
+
+void close_other_overlays(MonitorOutput &mon, PillId keep);
+
+struct QixingGeometry {
+    int32_t height;
+    int32_t margin_top;
+    int32_t exclusive_zone;
+};
+
+QixingGeometry qixing_autohide_geometry(bool autohide, bool collapsed,
+                                        int32_t cfg_height);
+
+int32_t qixing_current_height(const MonitorOutput &mon);
+
+void qixing_autohide_apply_geometry(MonitorOutput &mon, bool autohide,
+                                    bool collapsed);
+
+void monitor_autohide_apply(MonitorOutput &mon, bool enabled);
+
+bool volume_pill_peek_expire(MonitorOutput &mon);
+void volume_pill_peek_tick(MonitorOutput &mon);
+void volume_pill_handle_wheel(MonitorOutput &mon, double dy);
+
+} // namespace qixing_detail
+
+void qixing_paint(MonitorOutput &mon);
+void qixing_request_frame(MonitorOutput &mon);
+bool qixing_init_egl(MonitorOutput &mon, Renderer &renderer, EGLDisplay display,
+                     EGLConfig config, EGLContext context);
+void dispatch_pill_click(MonitorOutput &mon, double click_x, double click_y);
+void update_clock(MonitorOutput &mon);
+void init_stub_widgets(MonitorOutput &mon);

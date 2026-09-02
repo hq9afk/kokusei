@@ -1,0 +1,95 @@
+
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <fstream>
+#include <string>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include "app/config.h"
+
+void test_config() {
+    char tmp_template[] = "/tmp/kokusei_test_config_XXXXXX";
+    char *tmp_dir = mkdtemp(tmp_template);
+    assert(tmp_dir != nullptr);
+
+    const char *old_home = getenv("HOME");
+    std::string old_home_str = old_home ? old_home : "";
+    setenv("HOME", tmp_dir, 1);
+
+    std::string config_dir = std::string(tmp_dir) + "/.config/kokusei";
+    mkdir((std::string(tmp_dir) + "/.config").c_str(), 0755);
+
+    std::string path = config_path();
+    assert(path == config_dir + "/config.json");
+
+    Config cfg;
+    save_config(cfg);
+
+    std::ifstream f(path);
+    std::string content((std::istreambuf_iterator<char>(f)),
+                        std::istreambuf_iterator<char>());
+    assert(content.find("\"dock\"") == std::string::npos);
+    assert(content.find("\"autohideEnabled\"") != std::string::npos);
+
+    unlink(path.c_str());
+    rmdir(config_dir.c_str());
+    rmdir((std::string(tmp_dir) + "/.config").c_str());
+    rmdir(tmp_dir);
+
+    if (old_home)
+        setenv("HOME", old_home_str.c_str(), 1);
+}
+
+void test_config_watch() {
+    std::string path =
+        "/tmp/kokusei_test_config_watch_" + std::to_string(getpid()) + ".json";
+    {
+        std::ofstream f(path);
+        f << "{\"idle\":{\"timeoutSeconds\":300}}";
+    }
+
+    int fd = config_watch_init(path);
+    assert(fd >= 0);
+
+    {
+        std::ofstream f(path, std::ios::trunc);
+        f << "{\"idle\":{\"timeoutSeconds\":400}}";
+    }
+
+    bool changed = false;
+    for (int i = 0; i < 100 && !changed; ++i) {
+        usleep(10000);
+        changed = config_watch_poll(fd).changed;
+    }
+    assert(changed);
+
+    close(fd);
+    unlink(path.c_str());
+}
+
+void test_monitor_overrides() {
+    Config cfg;
+
+    assert(spark_effective_enabled(cfg, "DP-1") == cfg.default_spark_enabled);
+    assert(heralds_effective_enabled(cfg, "DP-1") ==
+           cfg.default_heralds_enabled);
+    assert(autohide_effective_enabled(cfg, "DP-1") == cfg.autohide);
+
+    cfg.monitor_overrides["DP-1"] = MonitorOverride{
+        .enabled = false, .spark = false, .heralds = false, .autohide = true};
+    assert(spark_effective_enabled(cfg, "DP-1") == cfg.default_spark_enabled);
+
+    cfg.monitor_overrides["DP-1"].enabled = true;
+    assert(spark_effective_enabled(cfg, "DP-1") == false);
+    assert(heralds_effective_enabled(cfg, "DP-1") == false);
+    assert(autohide_effective_enabled(cfg, "DP-1") == true);
+
+    assert(spark_effective_enabled(cfg, "HDMI-1") == cfg.default_spark_enabled);
+
+    assert(penance_effective_enabled(cfg, "HDMI-1") ==
+           cfg.default_penance_panel_enabled);
+    cfg.monitor_overrides["DP-1"].penance = false;
+    assert(penance_effective_enabled(cfg, "DP-1") == false);
+}
