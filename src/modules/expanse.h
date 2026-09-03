@@ -93,9 +93,6 @@ bool expanse_init_egl(ExpanseState &wp, Renderer &renderer, EGLDisplay display,
 
 void expanse_request_frame(ExpanseState &wp);
 
-// Force a repaint after the surface was hidden (session lock / fullscreen
-// overlay): drops any stale frame callback the compositor will never deliver,
-// then re-requests through the guaranteed damage+commit path.
 void expanse_wake(ExpanseState &wp);
 
 void expanse_draw_columns(const ExpanseState &wp, Node *parent, int32_t width,

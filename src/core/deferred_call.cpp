@@ -1,7 +1,6 @@
+#include <chrono>
 #include <fcntl.h>
 #include <unistd.h>
-
-#include <chrono>
 
 #include "core/deferred_call.h"
 #include "core/log.h"
