@@ -197,9 +197,10 @@ void start_exit_burst(StarwardState &state) {
 }
 
 void start_slashes(StarwardState &state) {
+    float step = kStarwardSlashMs * kStarwardSlashAdvanceFrac;
     for (int e = 0; e < kStarwardButtonCount; ++e) {
         size_t idx = static_cast<size_t>(e);
-        float delay = static_cast<float>(e) * kStarwardSlashStaggerMs;
+        float delay = static_cast<float>(e) * step;
         schedule_after(
             state.base.animations, delay, button_gate_owner(e), [&state, idx] {
                 state.base.animations.animate(
@@ -209,9 +210,9 @@ void start_slashes(StarwardState &state) {
             });
     }
 
-    float wait =
-        static_cast<float>(kStarwardButtonCount - 1) * kStarwardSlashStaggerMs +
-        kStarwardSlashMs + kStarwardHoldMs;
+    float slash_time =
+        static_cast<float>(kStarwardButtonCount - 1) * step + kStarwardSlashMs;
+    float wait = slash_time + kStarwardHoldMs;
     schedule_after(state.base.animations, wait, kStarwardHoldOwner, [&state] {
         if (state.exiting)
             start_exit_burst(state);

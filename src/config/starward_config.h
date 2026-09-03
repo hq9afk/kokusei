@@ -23,10 +23,8 @@ constexpr float kStarwardButtonBorderMs = 160.0f;
 constexpr float kStarwardHighlightScale = 1.05f;
 
 constexpr float kStarwardHoldMs = 300.0f;
-constexpr float kStarwardSlashSeqMs = 750.0f;
-constexpr float kStarwardSlashMs = 130.0f;
-constexpr float kStarwardSlashStaggerMs =
-    (kStarwardSlashSeqMs - kStarwardSlashMs) / (kStarwardButtonCount - 1);
+constexpr float kStarwardSlashMs = 120.0f;
+constexpr float kStarwardSlashAdvanceFrac = 0.75f;
 constexpr float kStarwardSlashOvershoot = 0.3f;
 constexpr float kStarwardBurstMs = 500.0f;
 constexpr float kStarwardPushMs = 260.0f;
