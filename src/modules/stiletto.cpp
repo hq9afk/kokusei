@@ -1,4 +1,4 @@
-#include <GLES2/gl2.h>
+#include <GLES3/gl32.h>
 
 #include "app/monitor_output.h"
 #include "app/wayland_state.h"

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <GLES2/gl2.h>
+#include <GLES3/gl32.h>
 
 class Renderer;
 

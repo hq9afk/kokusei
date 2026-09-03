@@ -1,7 +1,7 @@
 #pragma once
 
 #include <EGL/egl.h>
-#include <GLES2/gl2.h>
+#include <GLES3/gl32.h>
 #include <cstdint>
 #include <functional>
 #include <vector>
@@ -84,6 +84,7 @@ class Renderer {
     GLuint rounded_tex_program_ = 0;
     GLuint video_program_ = 0;
     GLuint quad_vbo_ = 0;
+    GLuint vao_ = 0;
     float viewport_[2] = {0, 0};
     int32_t scale_ = 1;
     float opacity_ = 1.0f;

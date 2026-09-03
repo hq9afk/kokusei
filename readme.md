@@ -4,6 +4,7 @@
 
 - Supported Display Server: Wayland
 - Supported Compositors: ShojiWM, Hyprland
+- Requires an OpenGL ES 3.2 driver
 
 ## Prerequisite
 

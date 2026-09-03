@@ -1,7 +1,7 @@
 #pragma once
 
 #include <EGL/egl.h>
-#include <GLES2/gl2.h>
+#include <GLES3/gl32.h>
 
 GLuint gl_compile_program(const char *vs_src, const char *fs_src,
                           const char *label);

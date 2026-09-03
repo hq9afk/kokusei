@@ -9,7 +9,7 @@ project(
 wayland_client_dep = dependency('wayland-client')
 wayland_egl_dep    = dependency('wayland-egl')
 egl_dep            = dependency('egl')
-glesv2_dep         = dependency('glesv2')
+glesv2_dep         = dependency('glesv2') # libGLESv2 exports the ES 3.2 entry points; the shell targets #version 320 es
 cairo_dep          = dependency('cairo')
 pangocairo_dep     = dependency('pangocairo')
 nlohmann_json_dep  = dependency('nlohmann_json')

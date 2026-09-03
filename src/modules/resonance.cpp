@@ -113,7 +113,8 @@ void render_thread_main(ResonanceState *state) {
 void resonance_render_thread_submit(ResonanceState &state, EGLConfig egl_config,
                                     float elapsed_ms) {
     if (!state.thread_state) {
-        static const EGLint kContextAttribs[] = {EGL_CONTEXT_CLIENT_VERSION, 2,
+        static const EGLint kContextAttribs[] = {EGL_CONTEXT_MAJOR_VERSION, 3,
+                                                 EGL_CONTEXT_MINOR_VERSION, 2,
                                                  EGL_NONE};
         state.render_context =
             eglCreateContext(state.base.egl_display, egl_config,

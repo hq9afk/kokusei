@@ -172,7 +172,7 @@
 
 ## src/shaders
 
-- `renderer_shaders.h`: The shared `Renderer`'s four GLES2 shaders (quad vertex, rect/tex/rrect fragment).
+- `renderer_shaders.h`: The shared `Renderer`'s `#version 320 es` shaders (quad vertex; rect/tex/rrect/rounded-tex/video fragment) plus `starward`'s two `thunder` fragment shaders.
 
 ## src
 

@@ -1,4 +1,5 @@
-#include <GLES2/gl2.h>
+#include <GLES3/gl32.h>
+
 #include <GLES2/gl2ext.h>
 #include <algorithm>
 #include <cmath>
@@ -12,6 +13,8 @@
 bool Renderer::init() {
     texture_detect_caps();
     video_texture_detect_caps(eglGetCurrentDisplay());
+    glGenVertexArrays(1, &vao_);
+    glBindVertexArray(vao_);
     rect_program_ =
         gl_compile_program(kRendererQuadVs, kRendererRectFs, "rect");
     tex_program_ = gl_compile_program(kRendererQuadVs, kRendererTexFs, "tex");
@@ -45,6 +48,8 @@ void Renderer::destroy() {
         glDeleteProgram(video_program_);
     if (quad_vbo_)
         glDeleteBuffers(1, &quad_vbo_);
+    if (vao_)
+        glDeleteVertexArrays(1, &vao_);
     *this = Renderer{};
 }
 

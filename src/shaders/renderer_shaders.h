@@ -1,12 +1,12 @@
 #pragma once
 
-constexpr const char *kRendererQuadVs = R"(
-    attribute vec2 a_pos;
+constexpr const char *kRendererQuadVs = R"(#version 320 es
+    in vec2 a_pos;
     uniform vec2 u_viewport;
     uniform vec4 u_rect;
     uniform vec4 u_model_ab;
     uniform vec2 u_model_t;
-    varying vec2 v_uv;
+    out vec2 v_uv;
     void main() {
         v_uv = a_pos;
         vec2 px = u_rect.xy + a_pos * u_rect.zw;
@@ -18,40 +18,44 @@ constexpr const char *kRendererQuadVs = R"(
     }
 )";
 
-constexpr const char *kRendererRectFs = R"(
+constexpr const char *kRendererRectFs = R"(#version 320 es
     precision mediump float;
     uniform vec4 u_color;
-    void main() { gl_FragColor = u_color; }
+    out vec4 fragColor;
+    void main() { fragColor = u_color; }
 )";
 
-constexpr const char *kRendererTexFs = R"(
+constexpr const char *kRendererTexFs = R"(#version 320 es
     precision mediump float;
-    varying vec2 v_uv;
+    in vec2 v_uv;
     uniform sampler2D u_tex;
     uniform vec4 u_color;
-    void main() { gl_FragColor = texture2D(u_tex, v_uv) * u_color; }
+    out vec4 fragColor;
+    void main() { fragColor = texture(u_tex, v_uv) * u_color; }
 )";
 
-constexpr const char *kRendererVideoFs = R"(
-    #extension GL_OES_EGL_image_external : require
+constexpr const char *kRendererVideoFs = R"(#version 320 es
+    #extension GL_OES_EGL_image_external_essl3 : require
     precision mediump float;
-    varying vec2 v_uv;
+    in vec2 v_uv;
     uniform samplerExternalOES u_tex;
     uniform float u_opacity;
+    out vec4 fragColor;
     void main() {
-        gl_FragColor = texture2D(u_tex, v_uv);
-        gl_FragColor.a *= u_opacity;
+        fragColor = texture(u_tex, v_uv);
+        fragColor.a *= u_opacity;
     }
 )";
 
-constexpr const char *kRendererRrectFs = R"(
-    precision mediump float;
-    varying vec2 v_uv;
+constexpr const char *kRendererRrectFs = R"(#version 320 es
+    precision highp float;
+    in vec2 v_uv;
     uniform vec2 u_size;
     uniform float u_radius;
     uniform float u_border_width;
     uniform vec4 u_fill_color;
     uniform vec4 u_border_color;
+    out vec4 fragColor;
     void main() {
         vec2 half_size = u_size * 0.5;
         vec2 p = (v_uv - 0.5) * u_size;
@@ -59,13 +63,13 @@ constexpr const char *kRendererRrectFs = R"(
         float d = length(max(abs(p) - b, 0.0)) - u_radius;
         float alpha = 1.0 - smoothstep(-0.5, 0.5, d);
         vec4 color = d <= -u_border_width ? u_fill_color : u_border_color;
-        gl_FragColor = color * alpha;
+        fragColor = color * alpha;
     }
 )";
 
-constexpr const char *kThunderBurstFs = R"(
+constexpr const char *kThunderBurstFs = R"(#version 320 es
     precision highp float;
-    varying vec2 v_uv;
+    in vec2 v_uv;
     uniform vec2 u_size;
     uniform vec2 u_a;
     uniform vec2 u_b;
@@ -77,6 +81,7 @@ constexpr const char *kThunderBurstFs = R"(
     uniform float u_thick;
     uniform vec4 u_core;
     uniform vec4 u_glow;
+    out vec4 fragColor;
 
     float hash1(float n) { return fract(sin(n) * 43758.5453123); }
 
@@ -122,13 +127,13 @@ constexpr const char *kThunderBurstFs = R"(
         f = min(f, 8.0);
         float a = clamp(f, 0.0, 1.0);
         vec3 col = mix(u_glow.rgb, u_core.rgb, clamp(f * f, 0.0, 1.0));
-        gl_FragColor = vec4(col, a);
+        fragColor = vec4(col, a);
     }
 )";
 
-constexpr const char *kThunderShockFs = R"(
+constexpr const char *kThunderShockFs = R"(#version 320 es
     precision highp float;
-    varying vec2 v_uv;
+    in vec2 v_uv;
     uniform vec2 u_size;
     uniform vec2 u_center;
     uniform float u_time;
@@ -137,6 +142,7 @@ constexpr const char *kThunderShockFs = R"(
     uniform float u_intensity;
     uniform vec4 u_core;
     uniform vec4 u_glow;
+    out vec4 fragColor;
 
     float hash1(float n) { return fract(sin(n) * 43758.5453123); }
 
@@ -171,23 +177,24 @@ constexpr const char *kThunderShockFs = R"(
         f = min(f, 8.0);
         float a = clamp(f, 0.0, 1.0);
         vec3 col = mix(u_glow.rgb, u_core.rgb, clamp(f * f, 0.0, 1.0));
-        gl_FragColor = vec4(col, a);
+        fragColor = vec4(col, a);
     }
 )";
 
-constexpr const char *kRendererRoundedTexFs = R"(
-    precision mediump float;
-    varying vec2 v_uv;
+constexpr const char *kRendererRoundedTexFs = R"(#version 320 es
+    precision highp float;
+    in vec2 v_uv;
     uniform sampler2D u_tex;
     uniform vec4 u_color;
     uniform vec2 u_size;
     uniform float u_radius;
+    out vec4 fragColor;
     void main() {
         vec2 half_size = u_size * 0.5;
         vec2 p = (v_uv - 0.5) * u_size;
         vec2 b = half_size - u_radius;
         float d = length(max(abs(p) - b, 0.0)) - u_radius;
         float alpha = 1.0 - smoothstep(-0.5, 0.5, d);
-        gl_FragColor = texture2D(u_tex, v_uv) * u_color * alpha;
+        fragColor = texture(u_tex, v_uv) * u_color * alpha;
     }
 )";

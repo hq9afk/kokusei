@@ -1,3 +1,4 @@
+#include <GLES3/gl32.h>
 #include <algorithm>
 #include <cstring>
 
@@ -173,9 +174,9 @@ bool bootstrap_egl(WaylandState &state) {
 
     const EGLint config_attribs[] = {
         EGL_SURFACE_TYPE,
-        EGL_WINDOW_BIT,
+        EGL_WINDOW_BIT | EGL_PBUFFER_BIT,
         EGL_RENDERABLE_TYPE,
-        EGL_OPENGL_ES2_BIT,
+        EGL_OPENGL_ES3_BIT,
         EGL_RED_SIZE,
         8,
         EGL_GREEN_SIZE,
@@ -193,10 +194,16 @@ bool bootstrap_egl(WaylandState &state) {
         return false;
     }
 
-    const EGLint context_attribs[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
+    const EGLint context_attribs[] = {EGL_CONTEXT_MAJOR_VERSION, 3,
+                                      EGL_CONTEXT_MINOR_VERSION, 2, EGL_NONE};
     state.egl_context = eglCreateContext(state.egl_display, state.egl_config,
                                          EGL_NO_CONTEXT, context_attribs);
-    return state.egl_context != EGL_NO_CONTEXT;
+    if (state.egl_context == EGL_NO_CONTEXT) {
+        klog("egl: OpenGL ES 3.2 context creation failed, egl error 0x%04x",
+             eglGetError());
+        return false;
+    }
+    return true;
 }
 
 bool renderer_bootstrap_init(WaylandState &state) {
@@ -210,6 +217,10 @@ bool renderer_bootstrap_init(WaylandState &state) {
         eglDestroySurface(state.egl_display, pbuffer);
         return false;
     }
+    klog("gl: %s | GLSL %s",
+         reinterpret_cast<const char *>(glGetString(GL_VERSION)),
+         reinterpret_cast<const char *>(
+             glGetString(GL_SHADING_LANGUAGE_VERSION)));
     bool ok = state.renderer.init();
     eglDestroySurface(state.egl_display, pbuffer);
     return ok;
