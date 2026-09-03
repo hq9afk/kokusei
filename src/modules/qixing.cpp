@@ -17,6 +17,7 @@
 #include "modules/qixing/widget/volume_widget.h"
 #include "modules/qixing/widget/yuheng_widget.h"
 
+#include "render/gl.h"
 #include "render/icon.h"
 #include "render/icons.h"
 #include "render/layer_surface.h"
@@ -159,7 +160,7 @@ bool qixing_init_egl(MonitorOutput &mon, Renderer &renderer, EGLDisplay display,
         nullptr);
     if (mon.egl_surface == EGL_NO_SURFACE)
         return false;
-    if (!eglMakeCurrent(display, mon.egl_surface, mon.egl_surface, context))
+    if (!gl_make_current(display, mon.egl_surface, context))
         return false;
 
     const char *renderer_name =
@@ -270,8 +271,7 @@ void qixing_paint(MonitorOutput &mon) {
         mon.autohide.enabled ? static_cast<float>(kQixingTopMargin) : 0.0f;
     float height = static_cast<float>(kQixingHeight);
 
-    eglMakeCurrent(app.egl_display, mon.egl_surface, mon.egl_surface,
-                   app.egl_context);
+    gl_make_current(app.egl_display, mon.egl_surface, app.egl_context);
     app.renderer.begin_frame(mon.width, surface_height, mon.output_scale.scale);
     app.renderer.set_opacity(mon.autohide.enabled ? mon.autohide.opacity
                                                   : 1.0f);
@@ -479,39 +479,34 @@ bool QixingPerMonitorModule::init_egl(WaylandState &app, MonitorOutput &mon) {
                                app.egl_display, app.egl_config,
                                app.egl_context)) {
         network_panel_request_frame(state.network_panel, 0.0f, 0.0f, 0.0f);
-        eglMakeCurrent(app.egl_display, mon.egl_surface, mon.egl_surface,
-                       app.egl_context);
+        gl_make_current(app.egl_display, mon.egl_surface, app.egl_context);
     }
     if (state.bluetooth_panel.base.layer_surface &&
         bluetooth_panel_init_egl(state.bluetooth_panel, app.renderer,
                                  app.bluetooth, app.egl_display, app.egl_config,
                                  app.egl_context)) {
         bluetooth_panel_request_frame(state.bluetooth_panel, 0.0f, 0.0f, 0.0f);
-        eglMakeCurrent(app.egl_display, mon.egl_surface, mon.egl_surface,
-                       app.egl_context);
+        gl_make_current(app.egl_display, mon.egl_surface, app.egl_context);
     }
     if (state.volume_panel.base.layer_surface &&
         volume_panel_init_egl(state.volume_panel, app.renderer, app.pipewire,
                               app.egl_display, app.egl_config,
                               app.egl_context)) {
         volume_panel_request_frame(state.volume_panel, 0.0f, 0.0f, 0.0f);
-        eglMakeCurrent(app.egl_display, mon.egl_surface, mon.egl_surface,
-                       app.egl_context);
+        gl_make_current(app.egl_display, mon.egl_surface, app.egl_context);
     }
     if (state.tray_panel.base.layer_surface &&
         tray_panel_init_egl(state.tray_panel, app.renderer, app.tray,
                             app.egl_display, app.egl_config, app.egl_context)) {
         tray_panel_request_frame(state.tray_panel, 0.0f, 0.0f, 0.0f);
-        eglMakeCurrent(app.egl_display, mon.egl_surface, mon.egl_surface,
-                       app.egl_context);
+        gl_make_current(app.egl_display, mon.egl_surface, app.egl_context);
     }
     if (state.battery_panel.base.layer_surface &&
         battery_panel_init_egl(state.battery_panel, app.renderer, app.upower,
                                app.egl_display, app.egl_config,
                                app.egl_context)) {
         battery_panel_request_frame(state.battery_panel, 0.0f, 0.0f, 0.0f);
-        eglMakeCurrent(app.egl_display, mon.egl_surface, mon.egl_surface,
-                       app.egl_context);
+        gl_make_current(app.egl_display, mon.egl_surface, app.egl_context);
     }
     if (state.system_monitor_panel.base.layer_surface &&
         system_monitor_panel_init_egl(state.system_monitor_panel, app.renderer,
@@ -520,15 +515,13 @@ bool QixingPerMonitorModule::init_egl(WaylandState &app, MonitorOutput &mon) {
                                       app.egl_config, app.egl_context)) {
         system_monitor_panel_request_frame(state.system_monitor_panel, 0.0f,
                                            0.0f, 0.0f);
-        eglMakeCurrent(app.egl_display, mon.egl_surface, mon.egl_surface,
-                       app.egl_context);
+        gl_make_current(app.egl_display, mon.egl_surface, app.egl_context);
     }
     if (state.clock_panel.base.layer_surface &&
         clock_panel_init_egl(state.clock_panel, app.renderer, app.egl_display,
                              app.egl_config, app.egl_context)) {
         clock_panel_request_frame(state.clock_panel, 0.0f, 0.0f, 0.0f);
-        eglMakeCurrent(app.egl_display, mon.egl_surface, mon.egl_surface,
-                       app.egl_context);
+        gl_make_current(app.egl_display, mon.egl_surface, app.egl_context);
     }
 
     if (mon.autohide.enabled) {

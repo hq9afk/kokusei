@@ -5,6 +5,7 @@
 
 #include "modules/blink.h"
 
+#include "render/gl.h"
 #include "render/layer_surface.h"
 #include "render/node.h"
 #include "render/palette.h"
@@ -126,8 +127,7 @@ void blink_overlay_paint(BlinkOverlayState &state) {
     if (state.egl_surface == EGL_NO_SURFACE)
         return;
 
-    eglMakeCurrent(state.egl_display, state.egl_surface, state.egl_surface,
-                   state.egl_context);
+    gl_make_current(state.egl_display, state.egl_surface, state.egl_context);
     state.renderer->begin_frame(state.width, state.height,
                                 state.output_scale.scale);
     glClearColor(0, 0, 0, 0);
@@ -216,7 +216,7 @@ bool blink_overlay_init_egl(BlinkOverlayState &state, Renderer &renderer,
         reinterpret_cast<EGLNativeWindowType>(state.egl_window), nullptr);
     if (state.egl_surface == EGL_NO_SURFACE)
         return false;
-    if (!eglMakeCurrent(display, state.egl_surface, state.egl_surface, context))
+    if (!gl_make_current(display, state.egl_surface, context))
         return false;
     state.frame_clock.surface = state.surface;
     state.frame_clock.draw = [&state] { blink_overlay_paint(state); };

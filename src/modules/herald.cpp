@@ -5,9 +5,12 @@
 #include <utility>
 #include <vector>
 
+#include "core/log.h"
+
 #include "modules/herald.h"
 
 #include "render/color_ops.h"
+#include "render/gl.h"
 #include "render/icon.h"
 #include "render/icons.h"
 #include "render/layer_surface.h"
@@ -233,7 +236,7 @@ bool herald_view_init_egl(HeraldView &view, HeraldService &service,
         nullptr);
     if (view.egl_surface == EGL_NO_SURFACE)
         return false;
-    if (!eglMakeCurrent(display, view.egl_surface, view.egl_surface, context))
+    if (!gl_make_current(display, view.egl_surface, context))
         return false;
     view.frame_clock.surface = view.surface;
     view.frame_clock.draw = [&view, &service] { herald_paint(view, service); };
@@ -315,8 +318,8 @@ void herald_sync(HeraldService &service,
 }
 
 void herald_paint(HeraldView &view, HeraldService &service) {
-    eglMakeCurrent(view.egl_display, view.egl_surface, view.egl_surface,
-                   view.egl_context);
+    if (!gl_make_current(view.egl_display, view.egl_surface, view.egl_context))
+        return;
     view.renderer->begin_frame(kHeraldSurfaceWidth, kHeraldSurfaceHeight,
                                view.output_scale.scale);
     glClearColor(0, 0, 0, 0);
@@ -463,7 +466,8 @@ void herald_paint(HeraldView &view, HeraldService &service) {
     }
 
     view.scene.draw(*view.renderer);
-    eglSwapBuffers(view.egl_display, view.egl_surface);
+    if (!eglSwapBuffers(view.egl_display, view.egl_surface))
+        klog("herald: eglSwapBuffers failed, egl error 0x%04x", eglGetError());
 
     if (service.animations.hasActive() || view.local_animations.hasActive())
         request_frame(view.frame_clock);

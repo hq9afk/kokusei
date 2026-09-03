@@ -16,6 +16,7 @@
 #include "modules/starward.h"
 
 #include "render/color_ops.h"
+#include "render/gl.h"
 #include "render/layer_surface.h"
 #include "render/node.h"
 
@@ -39,6 +40,7 @@ struct YujiMaiFont {
 
 YujiMaiFont &yujimai_font() {
     static YujiMaiFont font = [] {
+        auto t0 = std::chrono::steady_clock::now();
         YujiMaiFont f;
         static FT_Library library;
         if (FT_Init_FreeType(&library)) {
@@ -61,6 +63,10 @@ YujiMaiFont &yujimai_font() {
             return f;
         }
         f.cairo_face = cairo_ft_font_face_create_for_ft_face(f.face, 0);
+        klog("starward: YujiMai init %.0fms",
+             std::chrono::duration<float, std::milli>(
+                 std::chrono::steady_clock::now() - t0)
+                 .count());
         return f;
     }();
     return font;
@@ -411,6 +417,7 @@ void starward_toggle(StarwardState &state, bool by_widget) {
         return;
 
     bool opening = !state.base.open;
+    klog("starward: toggle open=%d by_widget=%d", opening, by_widget);
     if (opening) {
         state.selected_index = 0;
         state.base.open = true;
@@ -555,8 +562,9 @@ void starward_paint(StarwardState &state) {
     auto now = std::chrono::steady_clock::now();
     state.base.animations.tick(now);
     animated_image_tick(state.logo, now);
-    eglMakeCurrent(state.base.egl_display, state.base.egl_surface,
-                   state.base.egl_surface, state.base.egl_context);
+    if (!gl_make_current(state.base.egl_display, state.base.egl_surface,
+                         state.base.egl_context))
+        return;
     state.renderer->begin_frame(state.base.width, state.base.height,
                                 state.base.output_scale.scale);
     glClearColor(0, 0, 0, 0);
@@ -726,7 +734,29 @@ void starward_paint(StarwardState &state) {
         }
     }
 
-    eglSwapBuffers(state.base.egl_display, state.base.egl_surface);
+    gl_check("starward_paint");
+    auto sw0 = std::chrono::steady_clock::now();
+    if (!eglSwapBuffers(state.base.egl_display, state.base.egl_surface))
+        klog("starward: eglSwapBuffers failed, egl error 0x%04x",
+             eglGetError());
+    float sw = std::chrono::duration<float, std::milli>(
+                   std::chrono::steady_clock::now() - sw0)
+                   .count();
+    if (sw > 5.0f)
+        klog("starward: eglSwapBuffers %.1fms", sw);
+
+    static int frame = 0;
+    static std::chrono::steady_clock::time_point prev = now;
+    if (++frame % 30 == 0) {
+        int slashes = 0;
+        for (int i = 0; i < kStarwardButtonCount; ++i)
+            if (state.slash[static_cast<size_t>(i)] > 0.002f)
+                ++slashes;
+        klog("starward: paint #%d open=%d slashes=%d burst=%.2f dt=%.1fms",
+             frame, state.base.open, slashes, state.burst,
+             std::chrono::duration<float, std::milli>(now - prev).count());
+    }
+    prev = now;
 
     if (state.base.animations.hasActive() ||
         animated_image_animating(state.logo))

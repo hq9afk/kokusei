@@ -1,6 +1,7 @@
 #include <cmath>
 #include <utility>
 
+#include "render/gl.h"
 #include "render/overlay_panel.h"
 
 namespace {
@@ -82,7 +83,7 @@ bool overlay_panel_init_egl(OverlayPanelBase &base, EGLDisplay display,
         nullptr);
     if (base.egl_surface == EGL_NO_SURFACE)
         return false;
-    if (!eglMakeCurrent(display, base.egl_surface, base.egl_surface, context))
+    if (!gl_make_current(display, base.egl_surface, context))
         return false;
     base.frame_clock.surface = base.surface;
     return true;
@@ -103,6 +104,8 @@ void overlay_panel_destroy_surface(OverlayPanelBase &base) {
     base.frame_clock.redraw_requested = false;
     base.frame_clock.mapped = false;
     if (base.egl_surface != EGL_NO_SURFACE) {
+        eglMakeCurrent(base.egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE,
+                       base.egl_context);
         eglDestroySurface(base.egl_display, base.egl_surface);
         base.egl_surface = EGL_NO_SURFACE;
     }

@@ -1,8 +1,11 @@
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 #include <algorithm>
+#include <chrono>
 #include <memory>
 #include <thread>
+
+#include "app/wayland_state.h"
 
 #include "config/expanse_config.h"
 
@@ -11,6 +14,7 @@
 
 #include "modules/expanse.h"
 
+#include "render/gl.h"
 #include "render/layer_surface.h"
 #include "render/node.h"
 #include "render/palette.h"
@@ -27,8 +31,15 @@ AnimateFit to_fit(FillMode mode) {
 }
 
 void column_make_current(const ExpanseColumnGl &gl) {
-    if (gl.surface != EGL_NO_SURFACE)
-        eglMakeCurrent(gl.display, gl.surface, gl.surface, gl.context);
+    if (gl.surface == EGL_NO_SURFACE)
+        return;
+    auto t0 = std::chrono::steady_clock::now();
+    gl_make_current(gl.display, gl.surface, gl.context);
+    float ms = std::chrono::duration<float, std::milli>(
+                   std::chrono::steady_clock::now() - t0)
+                   .count();
+    if (ms > 5.0f)
+        klog("expanse: column eglMakeCurrent %.1fms", ms);
 }
 
 void expanse_column_draw(const ExpanseColumn &col, Node *parent, float x,
@@ -65,6 +76,7 @@ void expanse_column_upload_pending(ExpanseColumn &col,
                                    const ExpanseColumnGl &gl) {
     if (!col.pending_pixels || gl.surface == EGL_NO_SURFACE)
         return;
+    auto t0 = std::chrono::steady_clock::now();
     column_make_current(gl);
     bool animated = col.decode.stop_flag != nullptr;
     update_texture_rgba(col.tex, col.pending_width, col.pending_height,
@@ -73,6 +85,11 @@ void expanse_column_upload_pending(ExpanseColumn &col,
     col.pending_pixels = nullptr;
     if (gl.request_frame)
         gl.request_frame();
+    float ms = std::chrono::duration<float, std::milli>(
+                   std::chrono::steady_clock::now() - t0)
+                   .count();
+    if (ms > 5.0f)
+        klog("expanse: cpu upload %.1fms", ms);
 }
 
 void expanse_column_clear(ExpanseColumn &col, const ExpanseColumnGl &gl) {
@@ -181,9 +198,16 @@ void expanse_column_set_animated(ExpanseColumn &col, const ExpanseColumnGl &gl,
                           import.planes[i] = {
                               frame.planes[i].fd, frame.planes[i].modifier,
                               frame.planes[i].offset, frame.planes[i].pitch};
+                      auto t0 = std::chrono::steady_clock::now();
                       column_make_current(gl);
-                      if (video_texture_import(col.video_tex, gl.display,
-                                               import)) {
+                      bool ok = video_texture_import(col.video_tex, gl.display,
+                                                     import);
+                      float ms = std::chrono::duration<float, std::milli>(
+                                     std::chrono::steady_clock::now() - t0)
+                                     .count();
+                      if (ms > 5.0f)
+                          klog("expanse: zero-copy import %.1fms", ms);
+                      if (ok) {
                           col.zero_copy = true;
                           if (col.pinned_frame_prev)
                               media_decode_release_drm_frame(
@@ -241,9 +265,18 @@ constexpr zwlr_layer_surface_v1_listener expanse_layer_surface_listener = {
 void expanse_paint(ExpanseState &wp) {
     if (wp.egl_surface == EGL_NO_SURFACE)
         return;
+    if (wp.app && wp.app->session_locked) {
+        static bool logged = false;
+        if (!logged) {
+            logged = true;
+            klog("expanse: paint suspended while session locked");
+        }
+        frame_clock_drop_callback(wp.frame_clock);
+        return;
+    }
 
-    eglMakeCurrent(wp.egl_display, wp.egl_surface, wp.egl_surface,
-                   wp.egl_context);
+    if (!gl_make_current(wp.egl_display, wp.egl_surface, wp.egl_context))
+        return;
     wp.renderer->begin_frame(wp.width, wp.height, wp.output_scale.scale);
     glClearColor(palette::base.r, palette::base.g, palette::base.b,
                  palette::base.a);
@@ -252,8 +285,24 @@ void expanse_paint(ExpanseState &wp) {
     wp.scene.rebuild();
     expanse_draw_columns(wp, &wp.scene.root, wp.width, wp.height);
     wp.scene.draw(*wp.renderer);
+    gl_check("expanse_paint");
 
-    eglSwapBuffers(wp.egl_display, wp.egl_surface);
+    auto sw0 = std::chrono::steady_clock::now();
+    if (!eglSwapBuffers(wp.egl_display, wp.egl_surface))
+        klog("expanse: eglSwapBuffers failed, egl error 0x%04x", eglGetError());
+    float sw = std::chrono::duration<float, std::milli>(
+                   std::chrono::steady_clock::now() - sw0)
+                   .count();
+    if (sw > 5.0f)
+        klog("expanse: eglSwapBuffers %.1fms", sw);
+
+    bool zero_copy = false;
+    for (auto &c : wp.columns)
+        if (c && c->zero_copy)
+            zero_copy = true;
+    if (++wp.dbg_frame % 60 == 0)
+        klog("expanse: '%s' paint #%d zero_copy=%d", wp.output_name.c_str(),
+             wp.dbg_frame, zero_copy);
 }
 
 } // namespace
@@ -312,7 +361,7 @@ bool expanse_init_egl(ExpanseState &wp, Renderer &renderer, EGLDisplay display,
         nullptr);
     if (wp.egl_surface == EGL_NO_SURFACE)
         return false;
-    if (!eglMakeCurrent(display, wp.egl_surface, wp.egl_surface, context))
+    if (!gl_make_current(display, wp.egl_surface, context))
         return false;
     wp.gl.display = display;
     wp.gl.context = context;
@@ -324,8 +373,15 @@ bool expanse_init_egl(ExpanseState &wp, Renderer &renderer, EGLDisplay display,
 }
 
 void expanse_request_frame(ExpanseState &wp) {
+    if (wp.egl_surface == EGL_NO_SURFACE || (wp.app && wp.app->session_locked))
+        return;
+    request_frame(wp.frame_clock);
+}
+
+void expanse_wake(ExpanseState &wp) {
     if (wp.egl_surface == EGL_NO_SURFACE)
         return;
+    frame_clock_drop_callback(wp.frame_clock);
     request_frame(wp.frame_clock);
 }
 

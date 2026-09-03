@@ -8,6 +8,7 @@
 #include "modules/trulla.h"
 #include "modules/trulla/expanse_tab.h"
 
+#include "render/gl.h"
 #include "render/panel_scroll.h"
 
 #include "service/expanse_service.h"
@@ -106,7 +107,7 @@ void expanse_picker_request_thumbnail(ExpansePickerState &state,
                 }
                 if (!data)
                     return;
-                eglMakeCurrent(display, surface, surface, context);
+                gl_make_current(display, surface, context);
                 state.thumbnails[path] = make_texture_rgba(w, h, data, true);
                 delete[] data;
                 if (state.request_frame)

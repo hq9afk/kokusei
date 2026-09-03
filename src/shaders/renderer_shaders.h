@@ -64,7 +64,7 @@ constexpr const char *kRendererRrectFs = R"(
 )";
 
 constexpr const char *kThunderBurstFs = R"(
-    precision mediump float;
+    precision highp float;
     varying vec2 v_uv;
     uniform vec2 u_size;
     uniform vec2 u_a;
@@ -95,17 +95,20 @@ constexpr const char *kThunderBurstFs = R"(
         vec2 rel = p - a;
         float t = dot(rel, dir) / len;
         float perp = dot(rel, nrm);
+        float thick = max(u_thick, 0.001);
+        float tw = mod(u_time, 128.0);
 
-        float disp = (vnoise(t * 7.0 + seed * 13.0 + u_time * 9.0) - 0.5);
-        disp += (vnoise(t * 17.0 + seed * 31.0 + u_time * 17.0) - 0.5) * 0.45;
-        disp += (vnoise(t * 3.0 + seed * 7.0 - u_time * 4.0) - 0.5) * 1.4;
-        disp *= u_amp * smoothstep(0.0, 0.12, t) * smoothstep(1.0, 0.82, t);
+        float disp = (vnoise(t * 7.0 + seed * 13.0 + tw * 9.0) - 0.5);
+        disp += (vnoise(t * 17.0 + seed * 31.0 + tw * 17.0) - 0.5) * 0.45;
+        disp += (vnoise(t * 3.0 + seed * 7.0 - tw * 4.0) - 0.5) * 1.4;
+        disp *= u_amp * smoothstep(0.0, 0.12, t) *
+                (1.0 - smoothstep(0.82, 1.0, t));
 
         float d = abs(perp - disp);
-        float head = smoothstep(u_progress + 0.02, u_progress - 0.10, t);
+        float head = 1.0 - smoothstep(u_progress - 0.10, u_progress + 0.02, t);
         float span = step(-0.02, t) * step(t, 1.02);
-        float core = exp(-d * d * 0.05 / (u_thick * u_thick));
-        float glow = exp(-d * 0.055 / u_thick);
+        float core = exp(-d * d * 0.05 / (thick * thick));
+        float glow = exp(-d * 0.055 / thick);
         return (core * 1.0 + glow * 0.4) * head * span;
     }
 
@@ -115,15 +118,16 @@ constexpr const char *kThunderBurstFs = R"(
         vec2 mid = mix(u_a, u_b, 0.5) + vec2(u_amp * 1.5, -u_amp);
         f += bolt_field(p, u_a, mid, u_seed + 5.0) * 0.5;
         f *= u_intensity;
+        f *= float(f == f);
+        f = min(f, 8.0);
         float a = clamp(f, 0.0, 1.0);
-        vec3 col = u_glow.rgb;
-        col = mix(col, u_core.rgb, clamp(f * f, 0.0, 1.0));
+        vec3 col = mix(u_glow.rgb, u_core.rgb, clamp(f * f, 0.0, 1.0));
         gl_FragColor = vec4(col, a);
     }
 )";
 
 constexpr const char *kThunderShockFs = R"(
-    precision mediump float;
+    precision highp float;
     varying vec2 v_uv;
     uniform vec2 u_size;
     uniform vec2 u_center;
@@ -144,22 +148,27 @@ constexpr const char *kThunderShockFs = R"(
     }
 
     void main() {
-        vec2 p = v_uv * u_size - u_center;
+        vec2 p = v_uv * u_size - u_center + vec2(0.001, 0.001);
         float d = length(p);
         float ang = atan(p.y, p.x);
+        float tw = mod(u_time, 128.0);
 
         float front = u_progress * u_radius;
-        float wob = (vnoise(ang * 5.0 + u_time * 7.0) - 0.5) * 30.0;
-        wob += (vnoise(ang * 17.0 - u_time * 5.0) - 0.5) * 12.0;
+        float wob = (vnoise(ang * 5.0 + tw * 7.0) - 0.5) * 30.0;
+        wob += (vnoise(ang * 17.0 - tw * 5.0) - 0.5) * 12.0;
 
         float ring = abs(d - front - wob);
-        float width = 12.0 + 46.0 * u_progress;
+        float width = max(12.0 + 46.0 * u_progress, 0.001);
         float core = exp(-ring * ring / (width * width));
         float glow = exp(-ring / (width * 1.7));
-        float inside = smoothstep(front, front * 0.35, d) * 0.14;
+        float front_safe = max(front, 0.001);
+        float inside =
+            (1.0 - smoothstep(front_safe * 0.35, front_safe, d)) * 0.14;
 
         float fade = 1.0 - u_progress;
         float f = (core + glow * 0.5 + inside) * u_intensity * fade;
+        f *= float(f == f);
+        f = min(f, 8.0);
         float a = clamp(f, 0.0, 1.0);
         vec3 col = mix(u_glow.rgb, u_core.rgb, clamp(f * f, 0.0, 1.0));
         gl_FragColor = vec4(col, a);

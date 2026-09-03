@@ -10,6 +10,7 @@
 #include "modules/liyue.h"
 
 #include "render/color_ops.h"
+#include "render/gl.h"
 #include "render/icon.h"
 #include "render/layer_surface.h"
 #include "render/node.h"
@@ -516,8 +517,8 @@ void liyue_paint(LiyueState &state, WaylandState &app) {
         return;
     auto now = std::chrono::steady_clock::now();
     state.base.animations.tick(now);
-    eglMakeCurrent(state.base.egl_display, state.base.egl_surface,
-                   state.base.egl_surface, state.base.egl_context);
+    gl_make_current(state.base.egl_display, state.base.egl_surface,
+                    state.base.egl_context);
     state.renderer->begin_frame(state.base.width, state.base.height,
                                 state.base.output_scale.scale);
     glClearColor(0, 0, 0, 0);

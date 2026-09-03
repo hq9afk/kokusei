@@ -743,6 +743,8 @@ bool ExpansePerMonitorModule::configured() const {
 bool ExpansePerMonitorModule::init_egl(WaylandState &app, MonitorOutput &mon) {
     if (!state_.layer_surface)
         return true;
+    state_.app = &app;
+    state_.output_name = mon.output.name;
     if (!expanse_init_egl(state_, app.renderer, app.egl_display, app.egl_config,
                           app.egl_context))
         return true;
@@ -776,6 +778,8 @@ void ExpansePerMonitorModule::pause_animation() {
 void ExpansePerMonitorModule::resume_animation() {
     expanse_columns_resume_all(state_);
 }
+
+void ExpansePerMonitorModule::request_frame() { expanse_wake(state_); }
 
 MediaDecodeStatus
 ExpansePerMonitorModule::decode_status(int column_index) const {

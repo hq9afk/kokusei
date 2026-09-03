@@ -12,12 +12,15 @@
 bool Renderer::init() {
     texture_detect_caps();
     video_texture_detect_caps(eglGetCurrentDisplay());
-    rect_program_ = gl_compile_program(kRendererQuadVs, kRendererRectFs);
-    tex_program_ = gl_compile_program(kRendererQuadVs, kRendererTexFs);
-    rrect_program_ = gl_compile_program(kRendererQuadVs, kRendererRrectFs);
-    rounded_tex_program_ =
-        gl_compile_program(kRendererQuadVs, kRendererRoundedTexFs);
-    video_program_ = gl_compile_program(kRendererQuadVs, kRendererVideoFs);
+    rect_program_ =
+        gl_compile_program(kRendererQuadVs, kRendererRectFs, "rect");
+    tex_program_ = gl_compile_program(kRendererQuadVs, kRendererTexFs, "tex");
+    rrect_program_ =
+        gl_compile_program(kRendererQuadVs, kRendererRrectFs, "rrect");
+    rounded_tex_program_ = gl_compile_program(
+        kRendererQuadVs, kRendererRoundedTexFs, "rounded_tex");
+    video_program_ =
+        gl_compile_program(kRendererQuadVs, kRendererVideoFs, "video");
     if (!rect_program_ || !tex_program_ || !rrect_program_ ||
         !rounded_tex_program_ || !video_program_)
         return false;
@@ -56,6 +59,7 @@ void Renderer::begin_frame(int logical_width, int logical_height,
                         GL_ONE_MINUS_SRC_ALPHA);
     opacity_ = 1.0f;
     model_stack_.assign(1, Affine2D{});
+    gl_check("begin_frame");
 }
 
 Affine2D Affine2D::rotation_deg(float deg) {
@@ -170,6 +174,7 @@ void Renderer::draw_video_texture_rect(float x, float y, float w, float h,
     glUniform1i(glGetUniformLocation(video_program_, "u_tex"), 0);
     glUniform1f(glGetUniformLocation(video_program_, "u_opacity"), opacity_);
     draw_quad(video_program_);
+    gl_check("draw_video");
 }
 
 void Renderer::draw_custom(GLuint program, float x, float y, float w, float h,
@@ -181,6 +186,7 @@ void Renderer::draw_custom(GLuint program, float x, float y, float w, float h,
     if (set_uniforms)
         set_uniforms(program);
     draw_quad(program);
+    gl_check("draw_custom");
 }
 
 void Renderer::apply_clip(const ClipRect &r) {

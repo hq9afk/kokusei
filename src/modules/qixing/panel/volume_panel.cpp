@@ -3,6 +3,7 @@
 
 #include "modules/qixing/panel/volume_panel.h"
 
+#include "render/gl.h"
 #include "render/icon.h"
 #include "render/layer_surface.h"
 #include "render/palette.h"
@@ -196,8 +197,8 @@ void volume_panel_paint(VolumePanelState &state, PipewireState &pw,
     if (state.base.egl_surface == EGL_NO_SURFACE)
         return;
     state.base.animations.tick(std::chrono::steady_clock::now());
-    eglMakeCurrent(state.base.egl_display, state.base.egl_surface,
-                   state.base.egl_surface, state.base.egl_context);
+    gl_make_current(state.base.egl_display, state.base.egl_surface,
+                    state.base.egl_context);
     int32_t scale = state.base.output_scale.scale;
     state.renderer->begin_frame(state.base.width, state.base.height, scale);
     glClearColor(0, 0, 0, 0);

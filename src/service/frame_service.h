@@ -12,3 +12,8 @@ struct FrameClock {
 };
 
 void request_frame(FrameClock &clock);
+
+// Drop a pending frame callback that will never fire (surface hidden by a
+// session lock or a fullscreen overlay). Leaves `mapped` set so the next
+// request_frame takes the damage+commit path that guarantees a frame_done.
+void frame_clock_drop_callback(FrameClock &clock);

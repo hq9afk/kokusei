@@ -1,7 +1,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <chrono>
+
 #include "core/deferred_call.h"
+#include "core/log.h"
 
 void DeferredCall::init() {
     int fds[2];
@@ -33,8 +36,14 @@ void DeferredCall::drain() {
         std::lock_guard<std::mutex> lock(mutex());
         fns.swap(pending());
     }
+    auto t0 = std::chrono::steady_clock::now();
     for (auto &fn : fns)
         fn();
+    float ms = std::chrono::duration<float, std::milli>(
+                   std::chrono::steady_clock::now() - t0)
+                   .count();
+    if (ms > 5.0f)
+        klog("deferred: drain %zu callbacks in %.1fms", fns.size(), ms);
 }
 
 int DeferredCall::poll_fd() { return read_fd(); }

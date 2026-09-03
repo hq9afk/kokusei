@@ -14,6 +14,7 @@
 #include "modules/trulla/displays_tab.h"
 #include "modules/trulla/starward_tab.h"
 
+#include "render/gl.h"
 #include "render/renderer.h"
 
 #include "service/expanse_service.h"
@@ -440,8 +441,8 @@ void trulla_paint(TrullaState &state, const Config &cfg,
         animated_image_tick(state.profile_pic, now);
     else
         animated_image_hide(state.profile_pic);
-    eglMakeCurrent(state.base.egl_display, state.base.egl_surface,
-                   state.base.egl_surface, state.base.egl_context);
+    gl_make_current(state.base.egl_display, state.base.egl_surface,
+                    state.base.egl_context);
     int32_t scale = state.base.output_scale.scale;
     state.renderer->begin_frame(state.base.width, state.base.height, scale);
     state.renderer->set_opacity(state.base.opacity);

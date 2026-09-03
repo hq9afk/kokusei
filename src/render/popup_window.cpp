@@ -1,4 +1,5 @@
 #include "render/popup_window.h"
+#include "render/gl.h"
 
 namespace {
 
@@ -126,8 +127,7 @@ bool popup_window_init_egl(PopupWindowBase &base, wl_display *display,
         reinterpret_cast<EGLNativeWindowType>(base.egl_window), nullptr);
     if (base.egl_surface == EGL_NO_SURFACE)
         return false;
-    if (!eglMakeCurrent(egl_display, base.egl_surface, base.egl_surface,
-                        context))
+    if (!gl_make_current(egl_display, base.egl_surface, context))
         return false;
     base.frame_clock.surface = base.surface;
     return true;

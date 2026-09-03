@@ -15,6 +15,7 @@
 #include "modules/overseer/submenu.h"
 #include "modules/overseer/visit_store.h"
 
+#include "render/gl.h"
 #include "render/icon.h"
 #include "render/icons.h"
 #include "render/image.h"
@@ -210,7 +211,7 @@ bool overseer_init_egl(OverseerState &state, Renderer &renderer,
         reinterpret_cast<EGLNativeWindowType>(state.egl_window), nullptr);
     if (state.egl_surface == EGL_NO_SURFACE)
         return false;
-    if (!eglMakeCurrent(display, state.egl_surface, state.egl_surface, context))
+    if (!gl_make_current(display, state.egl_surface, context))
         return false;
     for (int i = 0; i < kOverseerMaxVisible; ++i)
         state.bullet_tex[i] = load_image_texture(
@@ -689,8 +690,7 @@ void overseer_paint(OverseerState &state) {
             kOverseerHeightOwner);
     }
 
-    eglMakeCurrent(state.egl_display, state.egl_surface, state.egl_surface,
-                   state.egl_context);
+    gl_make_current(state.egl_display, state.egl_surface, state.egl_context);
     int32_t scale = state.output_scale.scale;
     state.renderer->begin_frame(state.width, state.height, scale);
     glClearColor(0, 0, 0, 0);

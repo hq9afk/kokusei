@@ -27,6 +27,14 @@ const wl_callback_listener &listener() {
 
 } // namespace
 
+void frame_clock_drop_callback(FrameClock &clock) {
+    if (clock.callback) {
+        wl_callback_destroy(clock.callback);
+        clock.callback = nullptr;
+    }
+    clock.redraw_requested = false;
+}
+
 void request_frame(FrameClock &clock) {
     if (clock.callback) {
         clock.redraw_requested = true;

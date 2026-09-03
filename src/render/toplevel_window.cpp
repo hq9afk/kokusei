@@ -1,4 +1,5 @@
 #include "render/toplevel_window.h"
+#include "render/gl.h"
 
 namespace {
 
@@ -102,7 +103,7 @@ bool toplevel_window_init_egl(ToplevelWindowBase &base, EGLDisplay display,
         nullptr);
     if (base.egl_surface == EGL_NO_SURFACE)
         return false;
-    if (!eglMakeCurrent(display, base.egl_surface, base.egl_surface, context))
+    if (!gl_make_current(display, base.egl_surface, context))
         return false;
     base.frame_clock.surface = base.surface;
     return true;

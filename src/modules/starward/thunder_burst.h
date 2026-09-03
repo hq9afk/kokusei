@@ -9,6 +9,8 @@ struct ThunderBurst {
     GLuint shock_program = 0;
     bool bolt_tried = false;
     bool shock_tried = false;
+    bool bolt_logged = false;
+    bool shock_logged = false;
 };
 
 struct ThunderParams {

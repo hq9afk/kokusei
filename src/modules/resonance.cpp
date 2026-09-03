@@ -11,6 +11,7 @@
 #include "modules/resonance.h"
 
 #include "render/color_ops.h"
+#include "render/gl.h"
 #include "render/node.h"
 #include "render/overlay_panel.h"
 
@@ -78,8 +79,8 @@ void bar_visualizer_destroy_gl(BarVisualizerState &state) {
 }
 
 void render_thread_main(ResonanceState *state) {
-    if (!eglMakeCurrent(state->base.egl_display, state->base.egl_surface,
-                        state->base.egl_surface, state->render_context)) {
+    if (!gl_make_current(state->base.egl_display, state->base.egl_surface,
+                         state->render_context)) {
         klog(
             "visualizer: render thread eglMakeCurrent failed, eglGetError=0x%x",
             eglGetError());
@@ -106,8 +107,7 @@ void render_thread_main(ResonanceState *state) {
     }
 
     bar_visualizer_destroy_gl(state->qixing);
-    eglMakeCurrent(state->base.egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE,
-                   EGL_NO_CONTEXT);
+    gl_make_current(state->base.egl_display, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 }
 
 void resonance_render_thread_submit(ResonanceState &state, EGLConfig egl_config,

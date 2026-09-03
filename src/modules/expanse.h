@@ -23,6 +23,7 @@
 
 class Renderer;
 struct Node;
+struct WaylandState;
 
 enum class FillMode { Crop, Fit };
 
@@ -67,9 +68,12 @@ struct ExpanseState {
     EGLDisplay egl_display = nullptr;
     EGLContext egl_context = nullptr;
     Renderer *renderer = nullptr;
+    WaylandState *app = nullptr;
     int32_t width = 0;
     int32_t height = 0;
     bool configured = false;
+    std::string output_name;
+    int dbg_frame = 0;
     OutputScale output_scale;
     FrameClock frame_clock;
     Scene scene;
@@ -88,6 +92,11 @@ bool expanse_init_egl(ExpanseState &wp, Renderer &renderer, EGLDisplay display,
                       EGLConfig config, EGLContext context);
 
 void expanse_request_frame(ExpanseState &wp);
+
+// Force a repaint after the surface was hidden (session lock / fullscreen
+// overlay): drops any stale frame callback the compositor will never deliver,
+// then re-requests through the guaranteed damage+commit path.
+void expanse_wake(ExpanseState &wp);
 
 void expanse_draw_columns(const ExpanseState &wp, Node *parent, int32_t width,
                           int32_t height);

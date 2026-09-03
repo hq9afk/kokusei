@@ -52,6 +52,7 @@ struct WaylandState {
     EGLContext egl_context = EGL_NO_CONTEXT;
     Config cfg;
     bool running = true;
+    bool session_locked = false;
     Renderer renderer;
     BlinkState blink;
     HeraldService herald;

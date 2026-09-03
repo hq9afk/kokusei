@@ -39,6 +39,7 @@ class ExpansePerMonitorModule final : public PerMonitorModule {
     bool init_egl(WaylandState &app, MonitorOutput &mon) override;
     void destroy(WaylandState &app, MonitorOutput &mon) override;
     bool owns_surface(wl_surface *surface) const override;
+    void request_frame() override;
 
     void resync(WaylandState &app, MonitorOutput &mon, const Config &new_cfg);
 

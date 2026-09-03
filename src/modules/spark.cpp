@@ -5,6 +5,7 @@
 #include "modules/spark.h"
 
 #include "render/color_ops.h"
+#include "render/gl.h"
 #include "render/icon.h"
 #include "render/icons.h"
 #include "render/layer_surface.h"
@@ -31,8 +32,7 @@ constexpr zwlr_layer_surface_v1_listener spark_layer_surface_listener = {
 };
 
 void spark_paint(SparkState &state) {
-    eglMakeCurrent(state.egl_display, state.egl_surface, state.egl_surface,
-                   state.egl_context);
+    gl_make_current(state.egl_display, state.egl_surface, state.egl_context);
     int32_t scale = state.output_scale.scale;
     state.renderer->begin_frame(kSparkSurfaceWidth, kSparkSurfaceHeight, scale);
     glClearColor(0, 0, 0, 0);
@@ -158,7 +158,7 @@ bool spark_init_egl(SparkState &state, Renderer &renderer, EGLDisplay display,
         reinterpret_cast<EGLNativeWindowType>(state.egl_window), nullptr);
     if (state.egl_surface == EGL_NO_SURFACE)
         return false;
-    if (!eglMakeCurrent(display, state.egl_surface, state.egl_surface, context))
+    if (!gl_make_current(display, state.egl_surface, context))
         return false;
     state.frame_clock.surface = state.surface;
     state.frame_clock.draw = [&state] { spark_paint(state); };

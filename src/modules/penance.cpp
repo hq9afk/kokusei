@@ -22,6 +22,7 @@
 
 #include "render/arc_gauge.h"
 #include "render/color_ops.h"
+#include "render/gl.h"
 #include "render/icon.h"
 #include "render/icons.h"
 #include "render/image.h"
@@ -125,6 +126,9 @@ void request_all(PenanceState &st) {
 
 void start_init_anim(PenanceState &st, PenanceOutputSurface &los) {
     (void)st;
+    klog("penance: init anim start on '%s' box=%.0f target=%.0fx%.0f",
+         los.output_name.c_str(), penance_icon_box_size(), los.panel_w_target,
+         los.panel_h_target);
     los.anim_started = true;
     los.panel_scale = kPenanceScaleHidden;
     los.panel_rotation = 0.0f;
@@ -147,6 +151,8 @@ void start_init_anim(PenanceState &st, PenanceOutputSurface &los) {
         0.0f, 360.0f, kPenanceAnimSpinMs, Easing::EaseInOutCubic,
         [&los](float v) { los.panel_rotation = v; },
         [&los, target_w, target_h] {
+            klog("penance: entrance expand begin on '%s' -> %.0fx%.0f",
+                 los.output_name.c_str(), target_w, target_h);
             los.panel_rotation = 0.0f;
             auto &a2 = los.animations;
             a2.animate(
@@ -924,29 +930,73 @@ void draw_center_column(PenanceState &st, PenanceOutputSurface &los,
 void penance_paint(PenanceState &st, PenanceOutputSurface &los) {
     if (!los.configured || los.egl_surface == EGL_NO_SURFACE || !st.app)
         return;
+    using clk = std::chrono::steady_clock;
+    clk::time_point t_begin = clk::now();
+    clk::time_point t_make, t_expanse, t_panel, t_draw, t_swap;
+
+    static int frame = 0;
+    int f = ++frame;
+    bool trace = f <= 90;
+    auto step = [&](const char *what) {
+        if (trace)
+            klog("penance: paint #%d '%s' %s", f, los.output_name.c_str(),
+                 what);
+    };
+
     Renderer &r = st.app->renderer;
-    eglMakeCurrent(st.app->egl_display, los.egl_surface, los.egl_surface,
-                   st.app->egl_context);
+    step("enter -> eglMakeCurrent");
+    if (!gl_make_current(st.app->egl_display, los.egl_surface,
+                         st.app->egl_context))
+        return;
+    t_make = clk::now();
+    step("begin_frame");
     r.begin_frame(los.width, los.height, los.output_scale.scale);
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClearColor(palette::base.r, palette::base.g, palette::base.b, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    auto now = std::chrono::steady_clock::now();
+    auto now = clk::now();
     los.animations.tick(now);
     animated_image_tick(st.avatar, now);
 
     los.scene.rebuild();
     Node &root = los.scene.root;
 
+    step("draw_expanse");
     if (st.draw_expanse)
         st.draw_expanse(los.output_name, root, los.width, los.height);
+    t_expanse = clk::now();
 
+    step("build_panel");
     if (!los.panel_gated)
         build_panel(st, los, &root);
+    t_panel = clk::now();
 
+    step("scene.draw");
     r.set_opacity(1.0f);
     los.scene.draw(r);
-    eglSwapBuffers(st.app->egl_display, los.egl_surface);
+    gl_check("penance_paint");
+    t_draw = clk::now();
+    step("eglSwapBuffers");
+    if (!eglSwapBuffers(st.app->egl_display, los.egl_surface))
+        klog("penance: eglSwapBuffers failed on '%s', egl error 0x%04x",
+             los.output_name.c_str(), eglGetError());
+    t_swap = clk::now();
+    step("swapped");
+
+    auto ms = [](clk::time_point a, clk::time_point b) {
+        return std::chrono::duration<float, std::milli>(b - a).count();
+    };
+    if (ms(t_begin, t_swap) > 50.0f)
+        klog("penance: SLOW frame #%d '%s' make=%.1f expanse=%.1f panel=%.1f "
+             "draw=%.1f swap=%.1f",
+             f, los.output_name.c_str(), ms(t_begin, t_make),
+             ms(t_make, t_expanse), ms(t_expanse, t_panel), ms(t_panel, t_draw),
+             ms(t_draw, t_swap));
+    else if (f % 30 == 0)
+        klog("penance: paint #%d '%s' locked=%d unlocking=%d gated=%d "
+             "scale=%.2f content=%.2f",
+             f, los.output_name.c_str(), st.locked, st.unlocking,
+             los.panel_gated, los.panel_scale, los.content_alpha);
 
     bool avatar_running = st.locked && !st.unlocking && !los.panel_gated &&
                           animated_image_animating(st.avatar);
@@ -997,7 +1047,13 @@ void handle_locked(void *data, ext_session_lock_v1 *) {
         return;
     st->locked = true;
     st->locked_at = std::chrono::steady_clock::now();
-    klog("penance: session locked");
+    if (st->app)
+        st->app->session_locked = true;
+    klog("penance: session locked, %zu surface(s)", st->surfaces.size());
+    for (auto &up : st->surfaces)
+        klog("penance:   '%s' configured=%d egl=%d %dx%d",
+             up->output_name.c_str(), up->configured,
+             up->egl_surface != EGL_NO_SURFACE, up->width, up->height);
     request_all(*st);
 }
 
@@ -1171,11 +1227,15 @@ void penance_teardown(PenanceState &st) {
     st.active = false;
     st.locked = false;
     st.unlocking = false;
+    if (st.app)
+        st.app->session_locked = false;
     pam_auth::secure_clear(st.password.text);
     st.pw_anim.chars.clear();
     st.pw_row_slide = {};
     if (st.app) {
         app_detail::rest_egl_current(*st.app);
+        for (auto &mon : st.app->outputs)
+            request_all_frames(*mon);
         wl_display_flush(st.app->display);
     }
 }

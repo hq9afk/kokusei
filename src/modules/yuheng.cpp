@@ -10,6 +10,7 @@
 #include "modules/yuheng.h"
 
 #include "render/arc_gauge.h"
+#include "render/gl.h"
 #include "render/icon.h"
 #include "render/icons.h"
 #include "render/image.h"
@@ -828,8 +829,8 @@ void yuheng_paint(YuhengState &state, WaylandState &app, float qixing_height,
         animated_image_tick(state.profile_pic, now);
     else
         animated_image_hide(state.profile_pic);
-    eglMakeCurrent(state.base.egl_display, state.base.egl_surface,
-                   state.base.egl_surface, state.base.egl_context);
+    gl_make_current(state.base.egl_display, state.base.egl_surface,
+                    state.base.egl_context);
     int32_t scale = state.base.output_scale.scale;
     state.renderer->begin_frame(state.base.width, state.base.height, scale);
     glClearColor(0, 0, 0, 0);

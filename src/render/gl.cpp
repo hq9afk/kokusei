@@ -2,8 +2,9 @@
 
 #include "render/gl.h"
 
-GLuint gl_compile_program(const char *vs_src, const char *fs_src) {
-    auto compile = [](GLenum type, const char *src) -> GLuint {
+GLuint gl_compile_program(const char *vs_src, const char *fs_src,
+                          const char *label) {
+    auto compile = [label](GLenum type, const char *src) -> GLuint {
         GLuint shader = glCreateShader(type);
         glShaderSource(shader, 1, &src, nullptr);
         glCompileShader(shader);
@@ -12,7 +13,7 @@ GLuint gl_compile_program(const char *vs_src, const char *fs_src) {
         if (!ok) {
             char info[512];
             glGetShaderInfoLog(shader, sizeof(info), nullptr, info);
-            klog("shader compile failed: %s", info);
+            klog("shader compile failed (%s): %s", label ? label : "?", info);
             glDeleteShader(shader);
             return 0;
         }
@@ -36,9 +37,27 @@ GLuint gl_compile_program(const char *vs_src, const char *fs_src) {
     if (!ok) {
         char info[512];
         glGetProgramInfoLog(program, sizeof(info), nullptr, info);
-        klog("program link failed: %s", info);
+        klog("program link failed (%s): %s", label ? label : "?", info);
         glDeleteProgram(program);
         return 0;
     }
+    klog("gl: linked program %u (%s)", program, label ? label : "?");
     return program;
+}
+
+void gl_check(const char *where) {
+    GLenum err;
+    while ((err = glGetError()) != GL_NO_ERROR)
+        klog("gl: %s -> 0x%04x", where ? where : "?", err);
+}
+
+bool gl_make_current(EGLDisplay display, EGLSurface surface,
+                     EGLContext context) {
+    if (!eglMakeCurrent(display, surface, surface, context)) {
+        klog("gl: eglMakeCurrent failed, egl error 0x%04x", eglGetError());
+        return false;
+    }
+    if (surface != EGL_NO_SURFACE && !eglSwapInterval(display, 0))
+        klog("gl: eglSwapInterval(0) failed, egl error 0x%04x", eglGetError());
+    return true;
 }

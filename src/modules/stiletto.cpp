@@ -5,6 +5,7 @@
 
 #include "modules/stiletto.h"
 
+#include "render/gl.h"
 #include "render/node.h"
 #include "render/overlay_panel.h"
 
@@ -77,8 +78,8 @@ void stiletto_paint(StilettoState &state) {
 
     if (state.base.egl_surface == EGL_NO_SURFACE)
         return;
-    eglMakeCurrent(state.base.egl_display, state.base.egl_surface,
-                   state.base.egl_surface, state.base.egl_context);
+    gl_make_current(state.base.egl_display, state.base.egl_surface,
+                    state.base.egl_context);
     state.renderer->begin_frame(state.base.width, state.base.height,
                                 state.base.output_scale.scale);
     glClearColor(0, 0, 0, 0);
