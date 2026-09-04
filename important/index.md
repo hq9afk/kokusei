@@ -39,7 +39,7 @@
 - `stiletto_config.h`: Stiletto-rain window size, glyph/cell/timing constants.
 - `blink_config.h`: Blink recent-activity pulse and blink-overlay fade, logo-speed, and layer-namespace constants.
 - `penance_config.h`: Penance-screen card ratio, three-column and side-panel geometry, fetch/media/resources/notification-dock constants, dot/input/avatar sizes, entrance/exit animation timings, and per-property animation owner ids.
-- `resonance_config.h`: Audio resonance window size, qixing layout, and PipeWire spectrum constants.
+- `resonance_config.h`: Audio resonance fixed `1000 px` square render canvas, `0.7` black backdrop, `11 kHz` stereo capture, CPU FFT, and GLava GPU-transform constants.
 
 ## src/render
 
@@ -96,7 +96,6 @@
 - `media_plugin.h`+`.cpp`: The `shared_module` that links `libavcodec`/`libavfilter`, isolated so a missing/mismatched `ffmpeg` only disables animated content. Does the actual decoding: paced/looping/hw-accel/zero-copy playback for animated expanse (behind `media_decode_stream`), and a software-only bounded `RGBA` frame-set for UI gifs (behind `media_decode_frames`). Header declares the three `extern "C"` entry points the loader reaches via `dlsym`.
 - `trulla_service.h`+`.cpp`: Trulla field-text parsing into `Config` and the config-save wrapper.
 - `icon_service.h`+`.cpp`: App icon path resolution across GTK icon themes (Adwaita, breeze, hicolor), PNG then SVG, via a cached index.
-- `spectrum_service.h`+`.cpp`: Direct-PipeWire FFT spectrum capture, single mono `ChannelPipeline`; bar count is runtime-resizable via `setBarCount`.
 
 ## src/core
 
@@ -120,12 +119,20 @@
 - `blink.h`+`.cpp`: Recent-activity blink clock feeding the per-monitor ambient/screensaver overlay surface; screensaver bounces an `AnimatedImage` logo, freed while not shown.
 - `trulla.h`+`.cpp`: Trulla panel core, hosts per-tab modules, responsive nav rail, owns shared toggle-row widgets and `draw_profile_block`.
 - `stiletto.h`+`.cpp`: Stiletto-rain overlay, a real `xdg_toplevel` window, rebuilds the grid on live resize.
-- `resonance.h`+`.cpp`: Audio resonance overlay window; frequency bars as ordinary `Node`/`Scene` rects with bar count derived from window width; dedicated render thread and share-context `EGLContext`.
+- `resonance.h`+`.cpp`: Audio resonance overlay window; ported `ncs`/WayVes Perlin-noise blob (tinted to `accent` over a `0.7` black backdrop) plus `glow` post pass, fed by own `11 kHz` stereo PipeWire capture, CPU FFT, and a GLava GPU transform chain; dedicated render thread and share-context `EGLContext`.
 - `penance.h`+`.cpp`: `ext-session-lock-v1` session lock; one lock surface per `wl_output`, `PAM` auth on a worker thread, `caelestia`-style fixed-ratio card with a three-column layout (battery/fetch/media, center clock+date+avatar+pill, resources/notifications) drawn from `mpris`/`system_stats`/`cpu_temp`/`gpu_temp`/`upower`/`notification_service`, entrance/exit spin-expand choreography.
 
 ## src/modules/starward
 
 - `thunder_burst.h`+`.cpp`: Two single-pass `GLES2` fragment effects reached through `Renderer::draw_custom`, each with its own lazily-compiled program, bypassing the `Node`/`Scene` graph: `thunder_burst_draw` (`kThunderBurstFs`) a forked-lightning bolt scoped to its segment bbox for the eight star-path slashes and the finishing slash; `thunder_shock_draw` (`kThunderShockFs`) a radial shockwave ring for the button-push burst.
+
+## src/modules/resonance
+
+- `fft.h`+`.cpp`: Radix-2 DIT FFT (`GLava`-derived, GPL-3.0), Hann window plus `log`/`fftScale`/`fftCutOff` magnitude tilt; `EGL`-free, linked into the test binary.
+- `audio_capture.h`+`.cpp`: Own `pw_thread_loop` `11 kHz` stereo sink capture; `ncs` ring/fragment bookkeeping into `4096`-sample L/R buffers, `take()` snapshot under a mutex.
+- `audio_stages.h`+`.cpp`: Render-thread GLava GPU transform chain (`pass` peak-hold + `gravity` decay -> 5-frame ring -> Hann `average` -> frequency-domain `smooth`) over `Nx1` `GL_R16` textures, for L and R.
+- `blob_pipeline.h`+`.cpp`: Render-thread `ncs-1` (atomic-image particle accumulation) -> `ncs-2` (blob resolve) -> `glow` post, all at a fixed `1000 px` square canvas (`kResonanceSphereCanvas`), with an `r32ui` image texture, three `RGBA8` FBOs, `glMemoryBarrier` between stages, `u_fade`/`u_accent`/`u_backdrop` uniforms (`glow` composites the `0.7` black backdrop source-over), and a centered `glBlitFramebuffer` compositing the canvas onto the window surface.
+- `resonance_shaders.h`: The eight flattened `ncs` shader stages as string fragments (includes inlined, `#expand` hand-expanded), assembled at runtime.
 
 ## src/modules/penance
 
@@ -203,6 +210,7 @@
 - render/test_image_decode.cpp
 - render/test_text_elide.cpp
 - penance/test_layout.cpp
+- resonance/test_fft.cpp
 - dbus/test_mpris.cpp
 - system/test_cpu_temp.cpp
 - system/test_gpu_temp.cpp

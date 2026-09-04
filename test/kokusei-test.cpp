@@ -48,6 +48,7 @@ int main() {
         {"image_decode", test_image_decode},
         {"text_elide", test_text_elide},
         {"lock_layout", test_penance_layout},
+        {"resonance_fft", test_resonance_fft},
     };
     for (auto &c : cases) {
         std::printf("[ RUN ] %s\n", c.name);

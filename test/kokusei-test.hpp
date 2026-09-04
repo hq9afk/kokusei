@@ -33,3 +33,4 @@ void test_palette();
 void test_image_decode();
 void test_text_elide();
 void test_penance_layout();
+void test_resonance_fft();

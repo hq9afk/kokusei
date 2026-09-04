@@ -164,7 +164,6 @@ kokusei_service_main_only_sources = [
   'src/service/frame_service.cpp',
   'src/service/hyprland_service.cpp',
   'src/service/capture_service.cpp',
-  'src/service/spectrum_service.cpp',
   'src/service/text_input_service.cpp',
   'src/service/notification_service.cpp',
 ]
@@ -233,6 +232,13 @@ kokusei_overlay_main_only_sources = [
   'src/modules/liyue.cpp',
   'src/modules/stiletto.cpp',
   'src/modules/resonance.cpp',
+  'src/modules/resonance/audio_capture.cpp',
+  'src/modules/resonance/audio_stages.cpp',
+  'src/modules/resonance/blob_pipeline.cpp',
+]
+
+kokusei_resonance_test_sources = [
+  'src/modules/resonance/fft.cpp',
 ]
 
 kokusei_app_test_sources = [
@@ -270,6 +276,7 @@ kokusei_split_sources = [
   kokusei_penance_test_sources,
   kokusei_penance_main_only_sources,
   kokusei_overlay_main_only_sources,
+  kokusei_resonance_test_sources,
   kokusei_app_test_sources,
   kokusei_app_main_only_sources,
   kokusei_trulla_main_only_sources,
@@ -285,6 +292,7 @@ kokusei_test_split_sources = [
   kokusei_overseer_test_sources,
   kokusei_penance_test_sources,
   kokusei_qixing_test_sources,
+  kokusei_resonance_test_sources,
   kokusei_app_test_sources,
 ]
 
@@ -378,6 +386,7 @@ kokusei_test = executable(
   'test/render/test_image_decode.cpp',
   'test/render/test_text_elide.cpp',
   'test/penance/test_layout.cpp',
+  'test/resonance/test_fft.cpp',
   include_directories: kokusei_inc,
   dependencies: [
     threads_dep,

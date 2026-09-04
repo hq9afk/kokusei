@@ -10,12 +10,11 @@
 
 #include "app/ipc.h"
 
-#include "render/renderer.h"
-#include "render/scene.h"
+#include "modules/resonance/audio_capture.h"
+
 #include "render/toplevel_window.h"
 
 #include "service/input_service.h"
-#include "service/spectrum_service.h"
 
 struct WaylandState;
 
@@ -24,8 +23,11 @@ struct ResonanceFrame {
     int height = 0;
     int32_t scale = 1;
     float opacity = 1.0f;
-    float elapsed_ms = 0.0f;
-    std::vector<float> spectrum;
+    int tick = 0;
+    bool step = false;
+    bool modified = false;
+    std::vector<float> l;
+    std::vector<float> r;
 };
 
 struct ResonanceRenderThreadState {
@@ -36,19 +38,14 @@ struct ResonanceRenderThreadState {
     bool shutdown = false;
 };
 
-struct BarVisualizerState {
-    Renderer renderer;
-    Scene scene;
-    std::vector<float> display_values;
-    bool ready = false;
-};
-
 struct ResonanceState {
     ToplevelWindowBase base;
-    AudioSpectrum spectrum;
-    BarVisualizerState qixing;
-    std::chrono::steady_clock::time_point last_frame;
-    bool spectrum_ready = false;
+    ResonanceAudioCapture capture;
+    int tick = 0;
+    std::chrono::steady_clock::time_point last_step{};
+    std::vector<float> pending_l;
+    std::vector<float> pending_r;
+    bool pending_modified = false;
 
     EGLContext render_context = EGL_NO_CONTEXT;
     std::thread render_thread;

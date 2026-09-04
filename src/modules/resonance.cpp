@@ -1,5 +1,5 @@
-#include <algorithm>
-#include <cmath>
+#include <chrono>
+#include <vector>
 
 #include "app/monitor_output.h"
 #include "app/wayland_state.h"
@@ -9,84 +9,42 @@
 #include "core/log.h"
 
 #include "modules/resonance.h"
+#include "modules/resonance/audio_stages.h"
+#include "modules/resonance/blob_pipeline.h"
+#include "modules/resonance/fft.h"
 
-#include "render/color_ops.h"
 #include "render/gl.h"
-#include "render/node.h"
 #include "render/overlay_panel.h"
 
 namespace {
 
-constexpr Color kQixingColor =
-    with_alpha(palette::accent, kResonanceBarOpacity);
-
-int bar_visualizer_compute_qixing_count(int width) {
-    return std::max(
-        1, static_cast<int>((static_cast<float>(width) - kResonanceBarSpacing) /
-                            (kResonanceBarWidth + kResonanceBarSpacing)));
-}
-
-void bar_visualizer_render(BarVisualizerState &state, int width, int height,
-                           int32_t scale, float opacity, float elapsed_ms,
-                           const std::vector<float> &spectrum) {
-    if (!state.ready)
-        state.ready = state.renderer.init();
-    if (!state.ready)
-        return;
-
-    state.renderer.begin_frame(width, height, scale);
-    glClearColor(0, 0, 0, 0);
+void clear_backbuffer(ResonanceState &state, int width, int height) {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, width, height);
+    glClearColor(kResonanceWindowBackground.r, kResonanceWindowBackground.g,
+                 kResonanceWindowBackground.b, kResonanceWindowBackground.a);
     glClear(GL_COLOR_BUFFER_BIT);
-
-    state.scene.rebuild();
-
-    float win_w = static_cast<float>(width);
-    float win_h = static_cast<float>(height);
-
-    node_add_rect(&state.scene.root, 0.0f, 0.0f, win_w, win_h,
-                  rgba(kResonanceWindowBackground));
-
-    float k = 1.0f - std::exp(-std::max(0.0f, elapsed_ms) /
-                              kResonanceBarsAnimDurationMs);
-
-    state.display_values.resize(spectrum.size(), 0.0f);
-    int qixing_count = static_cast<int>(spectrum.size());
-
-    float total_w = qixing_count * kResonanceBarWidth +
-                    (qixing_count - 1) * kResonanceBarSpacing;
-    float start_x = (win_w - total_w) / 2.0f;
-    float baseline_y = win_h;
-
-    for (int i = 0; i < qixing_count; ++i) {
-        float &v = state.display_values[static_cast<size_t>(i)];
-        v += (spectrum[static_cast<size_t>(i)] - v) * k;
-        float qixing_h = std::max(1.0f, v * kResonanceBarHeightRatio * win_h);
-        float qixing_x =
-            start_x + i * (kResonanceBarWidth + kResonanceBarSpacing);
-        node_add_rrect(&state.scene.root, qixing_x, baseline_y - qixing_h,
-                       kResonanceBarWidth, qixing_h, kResonanceBarRadius, 0.0f,
-                       rgba(kQixingColor), kNodeTransparent);
-    }
-
-    state.renderer.set_opacity(opacity);
-    state.scene.draw(state.renderer);
-    state.renderer.set_opacity(1.0f);
-}
-
-void bar_visualizer_destroy_gl(BarVisualizerState &state) {
-    state.renderer.destroy();
-    state = BarVisualizerState{};
+    eglSwapBuffers(state.base.egl_display, state.base.egl_surface);
 }
 
 void render_thread_main(ResonanceState *state) {
     if (!gl_make_current(state->base.egl_display, state->base.egl_surface,
                          state->render_context)) {
-        klog(
-            "visualizer: render thread eglMakeCurrent failed, eglGetError=0x%x",
-            eglGetError());
+        klog("resonance: render thread eglMakeCurrent failed, eglGetError=0x%x",
+             eglGetError());
         return;
     }
     glEnable(GL_BLEND);
+
+    auto stages = std::make_unique<ResonanceAudioStages>();
+    auto blob = std::make_unique<ResonanceBlobPipeline>();
+    bool init_ok = stages->init() && blob->init();
+    if (!init_ok)
+        klog("resonance: pipeline init failed, showing cleared window");
+
+    std::vector<float> fft_l;
+    std::vector<float> fft_r;
+    int audio_size = 0;
 
     ResonanceRenderThreadState &ts = *state->thread_state;
     for (;;) {
@@ -100,18 +58,43 @@ void render_thread_main(ResonanceState *state) {
             ts.have_frame = false;
         }
 
-        bar_visualizer_render(state->qixing, frame.width, frame.height,
-                              frame.scale, frame.opacity, frame.elapsed_ms,
-                              frame.spectrum);
+        if (!init_ok) {
+            clear_backbuffer(*state, frame.width, frame.height);
+            continue;
+        }
+
+        if (frame.step && frame.modified &&
+            static_cast<int>(frame.l.size()) >= kResonanceFragmentSize &&
+            static_cast<int>(frame.r.size()) >= kResonanceFragmentSize) {
+            fft_l = frame.l;
+            fft_r = frame.r;
+            resonance_fft(fft_l.data(), kResonanceFragmentSize,
+                          kResonanceFftScale, kResonanceFftCutOff);
+            resonance_fft(fft_r.data(), kResonanceFragmentSize,
+                          kResonanceFftScale, kResonanceFftCutOff);
+            audio_size = kResonanceFragmentSize;
+        }
+
+        if (frame.step && audio_size > 0)
+            stages->run(audio_size, fft_l, fft_r);
+
+        GLuint al = stages->ready() ? stages->smooth_l() : 0;
+        GLuint ar = stages->ready() ? stages->smooth_r() : 0;
+        blob->render(frame.width, frame.height, frame.tick, frame.opacity, al,
+                     ar, stages->size());
+
         eglSwapBuffers(state->base.egl_display, state->base.egl_surface);
     }
 
-    bar_visualizer_destroy_gl(state->qixing);
+    stages->destroy();
+    blob->destroy();
+    stages.reset();
+    blob.reset();
     gl_make_current(state->base.egl_display, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 }
 
 void resonance_render_thread_submit(ResonanceState &state, EGLConfig egl_config,
-                                    float elapsed_ms) {
+                                    bool step) {
     if (!state.thread_state) {
         static const EGLint kContextAttribs[] = {EGL_CONTEXT_MAJOR_VERSION, 3,
                                                  EGL_CONTEXT_MINOR_VERSION, 2,
@@ -131,18 +114,18 @@ void resonance_render_thread_submit(ResonanceState &state, EGLConfig egl_config,
     ts.pending.height = state.base.height;
     ts.pending.scale = state.base.output_scale.scale;
     ts.pending.opacity = state.base.opacity;
-    ts.pending.elapsed_ms = elapsed_ms;
-    ts.pending.spectrum = state.spectrum.values();
+    ts.pending.tick = state.tick;
+    ts.pending.step = step;
+    ts.pending.modified = state.pending_modified;
+    if (state.pending_modified) {
+        ts.pending.l = std::move(state.pending_l);
+        ts.pending.r = std::move(state.pending_r);
+    } else {
+        ts.pending.l.clear();
+        ts.pending.r.clear();
+    }
     ts.have_frame = true;
     ts.cv.notify_one();
-}
-
-void retarget_spectrum(ResonanceState &state, WaylandState &app) {
-    uint32_t sink_id = app.pipewire.default_sink_id;
-    auto it = app.pipewire.nodes.find(sink_id);
-    std::string sink_name =
-        it != app.pipewire.nodes.end() ? it->second.name : "";
-    state.spectrum.setTargetNode(sink_id, sink_name);
 }
 
 } // namespace
@@ -152,6 +135,8 @@ void resonance_request_frame(ResonanceState &state) {
 }
 
 void resonance_shutdown(ResonanceState &state) {
+    state.capture.stop();
+
     if (state.thread_state) {
         {
             std::lock_guard<std::mutex> lock(state.thread_state->mutex);
@@ -174,8 +159,8 @@ void resonance_toggle(ResonanceState &state, WaylandState &app) {
         if (state.base.egl_surface == EGL_NO_SURFACE) {
             if (!toplevel_window_create_surface(
                     state.base, app.compositor, app.wm_base, "Visualizer",
-                    "kokusei-resonance", kResonanceDefaultWindowWidth,
-                    kResonanceDefaultWindowHeight))
+                    "kokusei-resonance", kResonanceSphereCanvas,
+                    kResonanceSphereCanvas))
                 return;
             while (!state.base.configured)
                 wl_display_dispatch(app.display);
@@ -187,15 +172,13 @@ void resonance_toggle(ResonanceState &state, WaylandState &app) {
             state.base.frame_clock.draw = [&state, &app] {
                 resonance_paint(state, app.egl_config);
             };
-            if (!state.spectrum_ready)
-                state.spectrum_ready = state.spectrum.init();
             state.base.on_close_request = [&state, &app] {
                 resonance_toggle(state, app);
             };
+            app_detail::rest_egl_current(app);
         }
         state.base.open = true;
-        retarget_spectrum(state, app);
-        state.last_frame = std::chrono::steady_clock::now();
+        state.capture.start();
     }
 
     if (opening) {
@@ -237,17 +220,24 @@ void resonance_paint(ResonanceState &state, EGLConfig egl_config) {
     if (state.base.egl_surface == EGL_NO_SURFACE)
         return;
 
-    state.spectrum.setBarCount(
-        bar_visualizer_compute_qixing_count(state.base.width));
-    state.spectrum.processFrame();
+    constexpr std::chrono::nanoseconds kStep{1'000'000'000 / kResonanceFps};
+    if (state.last_step.time_since_epoch().count() == 0)
+        state.last_step = now - kStep;
+    bool step = now - state.last_step >= kStep;
+    if (step) {
+        state.last_step += kStep;
+        if (now - state.last_step >= kStep)
+            state.last_step = now;
 
-    float elapsed_ms =
-        std::chrono::duration<float, std::milli>(now - state.last_frame)
-            .count();
+        state.tick++;
+        bool modified = false;
+        state.capture.take(state.pending_l, state.pending_r, modified);
+        state.pending_modified = modified;
+    } else {
+        state.pending_modified = false;
+    }
 
-    resonance_render_thread_submit(state, egl_config, elapsed_ms);
-
-    state.last_frame = now;
+    resonance_render_thread_submit(state, egl_config, step);
 
     if (state.base.open || state.base.animations.hasActive())
         toplevel_window_request_frame(state.base);
