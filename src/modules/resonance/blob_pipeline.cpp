@@ -1,3 +1,4 @@
+#include <chrono>
 #include <vector>
 
 #include "config/resonance_config.h"
@@ -152,7 +153,25 @@ void ResonanceBlobPipeline::render(int width, int height, int tick, float fade,
     if (!ready_ || width <= 0 || height <= 0)
         return;
 
+    static int trace_frames = 8;
+    bool trace = trace_frames > 0;
+    if (trace)
+        --trace_frames;
+    auto mark = [trace, tick](const char *tag) {
+        if (!trace)
+            return;
+        auto t0 = std::chrono::steady_clock::now();
+        glFinish();
+        klog("resonance_blob: f%d %s %.1fms", tick, tag,
+             std::chrono::duration<float, std::milli>(
+                 std::chrono::steady_clock::now() - t0)
+                 .count());
+    };
+
+    bool first_targets = atomic_tex_ == 0;
     ensure_targets();
+    if (first_targets)
+        mark("ensure_targets");
 
     glDisable(GL_SCISSOR_TEST);
     glDisable(GL_BLEND);
@@ -171,6 +190,7 @@ void ResonanceBlobPipeline::render(int width, int height, int tick, float fade,
     set_audio_uniforms(ncs1_prog_, audio_l_tex, audio_r_tex, audio_size, tick);
     draw_quad();
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    mark("ncs1");
 
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_[1]);
     glUseProgram(ncs2_prog_);
@@ -181,6 +201,7 @@ void ResonanceBlobPipeline::render(int width, int height, int tick, float fade,
     draw_quad();
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT |
                     GL_TEXTURE_FETCH_BARRIER_BIT);
+    mark("ncs2");
 
     glBindFramebuffer(GL_FRAMEBUFFER, glow_fbo_);
     glUseProgram(glow_prog_);
@@ -193,6 +214,7 @@ void ResonanceBlobPipeline::render(int width, int height, int tick, float fade,
     glBindTexture(GL_TEXTURE_2D, fbo_tex_[1]);
     glUniform1i(glGetUniformLocation(glow_prog_, "tex"), 0);
     draw_quad();
+    mark("glow");
 
     int off_x = (width - kResonanceSphereCanvas) / 2;
     int off_y = (height - kResonanceSphereCanvas) / 2;

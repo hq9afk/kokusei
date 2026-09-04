@@ -563,7 +563,7 @@ class ResonanceModule final : public Module {
     bool init_egl(WaylandState &) override { return true; }
     bool configured() const override { return true; }
     wl_surface *surface() const override { return state_.base.surface; }
-    void request_frame() override { resonance_request_frame(state_); }
+    void request_frame() override {}
 
     void handle_key_event(WaylandState &app, const KeyEvent &event) override {
         resonance_handle_key_event(state_, app, event);
