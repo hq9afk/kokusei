@@ -3,7 +3,9 @@
 ## Commenting
 
 - No comments across the code base
-- Namespace comments enforced by clang-fotmat is the sole exception
+- Exceptions:
+  - Namespace comment,
+  - Config comments to group constants together. 
 
 ## Formatting the shell
 

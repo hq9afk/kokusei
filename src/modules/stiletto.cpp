@@ -8,6 +8,7 @@
 #include "render/gl.h"
 #include "render/node.h"
 #include "render/overlay_panel.h"
+#include "render/palette.h"
 
 void stiletto_request_frame(StilettoState &state) {
     toplevel_window_request_frame(state.base);
@@ -91,7 +92,7 @@ void stiletto_paint(StilettoState &state) {
     float win_h = static_cast<float>(state.base.height);
 
     node_add_rect(&state.scene.root, 0.0f, 0.0f, win_w, win_h,
-                  rgba(kStilettoWindowBackground));
+                  rgba(palette::window_backdrop));
 
     if (state.base.width != state.grid_width ||
         state.base.height != state.grid_height) {

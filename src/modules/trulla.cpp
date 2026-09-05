@@ -16,10 +16,23 @@
 #include "modules/trulla/starward_tab.h"
 
 #include "render/gl.h"
+#include "render/icons.h"
 #include "render/renderer.h"
 
 #include "service/expanse_service.h"
 #include "service/trulla_service.h"
+
+namespace {
+
+constexpr TrullaTabDef kTrullaTabs[kTrullaTabCount] = {
+    {kTrullaTabLabels[0], icon::wallpaper},
+    {kTrullaTabLabels[1], icon::device_desktop},
+    {kTrullaTabLabels[2], icon::moon_stars},
+    {kTrullaTabLabels[3], icon::power},
+    {kTrullaTabLabels[4], icon::wave_sine},
+};
+
+} // namespace
 
 std::string trulla_detail_format_field(const Config &cfg, TrullaFieldId id,
                                        const std::string &monitor) {

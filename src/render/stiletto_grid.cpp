@@ -7,6 +7,7 @@
 
 #include "config/stiletto_config.h"
 
+#include "render/palette.h"
 #include "render/stiletto_grid.h"
 #include "render/text.h"
 
@@ -158,14 +159,14 @@ void StilettoGrid::tick() {
         if (col.last_head_valid) {
             float last_y = offset_y_ + col.last_head_drop * kStilettoCellHeight;
             draw_glyph_centered(cr, col.last_glyph, x, last_y, false,
-                                kStilettoTailColor);
+                                palette::accent);
         }
 
         if (col.drop >= 0.0f) {
             float y = offset_y_ + col.drop * kStilettoCellHeight;
             bool bold = random01() < kStilettoBoldChance;
             char32_t glyph = random_glyph();
-            draw_glyph_centered(cr, glyph, x, y, bold, kStilettoHeadColor);
+            draw_glyph_centered(cr, glyph, x, y, bold, palette::text);
             col.last_glyph = glyph;
             col.last_head_drop = col.drop;
             col.last_head_valid = true;

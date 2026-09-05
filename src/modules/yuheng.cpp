@@ -27,6 +27,12 @@
 #include "service/telemetry_service.h"
 #include "service/upower_service.h"
 
+constexpr Color kGaugeColorCpu = color(kGaugeColorCpuHex);
+constexpr Color kGaugeColorGpu = color(kGaugeColorGpuHex);
+constexpr Color kGaugeColorRam = color(kGaugeColorRamHex);
+constexpr Color kGaugeColorDisk = color(kGaugeColorDiskHex);
+constexpr Color kTempWarnColor = color(kTempWarnColorHex);
+
 bool yuheng_create_surface(YuhengState &state, wl_compositor *compositor,
                            zwlr_layer_shell_v1 *layer_shell,
                            wl_output *output) {

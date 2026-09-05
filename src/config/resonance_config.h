@@ -1,14 +1,13 @@
 #pragma once
 
-#include "render/palette.h"
-
-constexpr float kResonanceCanvasFraction = 0.9f;
+// canvas sizing
+constexpr float kResonanceCanvasFraction = 0.8f;
 constexpr int kResonanceCanvasMin = 200;
 
-inline constexpr Color kResonanceWindowBackground = {0.0f, 0.0f, 0.0f, 0.7f};
-
+// default window size
 constexpr int kResonanceDefaultWindow = 1000;
 
+// audio capture
 constexpr unsigned int kResonanceSampleRate = 11000;
 constexpr int kResonanceChannels = 2;
 constexpr int kResonanceSampleSize = 1024;
@@ -16,6 +15,7 @@ constexpr int kResonanceFragmentSize = 4096;
 constexpr float kResonanceFftScale = 10.2f;
 constexpr float kResonanceFftCutOff = 0.3f;
 
+// gravity & smoothing
 constexpr int kResonanceGravityAverageFrames = 5;
 constexpr float kResonanceGravityStep = 4.2f;
 constexpr float kResonanceSampleHybridWeight = 0.065f;
@@ -26,6 +26,7 @@ constexpr float kResonanceSampleScale = 8.0f;
 constexpr float kResonanceSmoothFactor = 0.025f;
 constexpr int kResonanceFps = 60;
 
+// clamp ranges
 constexpr int kResonanceFpsMin = 15;
 constexpr int kResonanceFpsMax = 144;
 constexpr float kResonanceParticleThinMin = 0.0f;

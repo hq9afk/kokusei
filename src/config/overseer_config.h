@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
+// layout & geometry
 constexpr float kOverseerPad = 10.0f;
 constexpr float kOverseerMenuPad = 14.0f;
 constexpr float kOverseerBorderWidth = 2.0f;
@@ -24,18 +25,27 @@ constexpr float kOverseerTwoLineGap = -3.0f;
 constexpr float kOverseerListGap = 10.0f;
 constexpr int kOverseerSurfaceWidth = 700;
 constexpr int kOverseerMaxVisible = 6;
+
+// timing
 constexpr int kOverseerSearchDebounceMs = 120;
 constexpr int kOverseerKillGraceMs = 50;
 constexpr int kOverseerKillCheckMs = 5;
+
+// search limits
 constexpr int kOverseerMaxResults = 20;
+
+// animation
 constexpr float kOverseerHeightAnimMs = 200.0f;
 constexpr float kOverseerHighlightAnimMs = 140.0f;
+
+// animation owners
 constexpr uint64_t kOverseerHeightOwner = 100;
 constexpr uint64_t kOverseerHighlightOwner = 101;
 constexpr uint64_t kOverseerScrollOwner = 102;
 
 constexpr uint64_t kOverseerQueryCharOwnerBase = 1000;
 
+// icon size
 inline constexpr int kIconTargetSize = 18;
 
 namespace overseer_detail {

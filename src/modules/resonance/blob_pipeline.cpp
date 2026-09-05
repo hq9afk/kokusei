@@ -255,8 +255,8 @@ void ResonanceBlobPipeline::render(int width, int height, int tick, float fade,
                        canvas, params);
     glUniform1f(glGetUniformLocation(glow_prog_, "u_fade"), fade);
     glUniform4f(glGetUniformLocation(glow_prog_, "u_backdrop"),
-                kResonanceWindowBackground.r, kResonanceWindowBackground.g,
-                kResonanceWindowBackground.b, kResonanceWindowBackground.a);
+                palette::window_backdrop.r, palette::window_backdrop.g,
+                palette::window_backdrop.b, palette::window_backdrop.a);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, fbo_tex_[1]);
     glUniform1i(glGetUniformLocation(glow_prog_, "tex"), 0);
@@ -267,8 +267,8 @@ void ResonanceBlobPipeline::render(int width, int height, int tick, float fade,
     int off_y = (height - canvas) / 2;
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     glViewport(0, 0, width, height);
-    glClearColor(kResonanceWindowBackground.r, kResonanceWindowBackground.g,
-                 kResonanceWindowBackground.b, kResonanceWindowBackground.a);
+    glClearColor(palette::window_backdrop.r, palette::window_backdrop.g,
+                 palette::window_backdrop.b, palette::window_backdrop.a);
     glClear(GL_COLOR_BUFFER_BIT);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, glow_fbo_);
     glBlitFramebuffer(0, 0, canvas, canvas, off_x, off_y, off_x + canvas,

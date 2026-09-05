@@ -35,11 +35,11 @@
 - `yuheng_config.h`: Yuheng card-stack geometry and gauge/temp-warn color constants.
 - `liyue_config.h`: Liyue workspace-grid geometry, timing, and live-capture throttle constants.
 - `expanse_config.h`: Expanse layer-shell namespace constant.
-- `trulla_config.h`: Trulla panel layout, opacity, animation, group, widget, popup, spinner constants, `TrullaFieldId` enum, and the five-entry nav-rail tab table.
+- `trulla_config.h`: Trulla panel layout, opacity, animation, group, widget, popup, spinner constants, `TrullaFieldId` enum, `TrullaTabDef` type, and the five nav-rail tab labels (the icon-paired table itself is assembled in `trulla.cpp`).
 - `stiletto_config.h`: Stiletto-rain window size, glyph/cell/timing constants.
 - `blink_config.h`: Blink recent-activity pulse and blink-overlay fade, logo-speed, and layer-namespace constants.
 - `penance_config.h`: Penance-screen card ratio, three-column and side-panel geometry, fetch/media/resources/notification-dock constants, dot/input/avatar sizes, entrance/exit animation timings, and per-property animation owner ids.
-- `resonance_config.h`: Audio resonance surface-derived square render canvas (`0.75 * min(w,h)`), `0.7` black backdrop, `11 kHz` stereo capture, CPU FFT, GLava GPU-transform constants, plus `ResonanceParams` runtime knobs (fps, particle thin/size, fractal complexity, glow directions/quality) and their clamp ranges.
+- `resonance_config.h`: Audio resonance surface-derived square render canvas (`0.75 * min(w,h)`), `11 kHz` stereo capture, CPU FFT, GLava GPU-transform constants, plus `ResonanceParams` runtime knobs (fps, particle thin/size, fractal complexity, glow directions/quality) and their clamp ranges (the shared `0.7` black backdrop moved to `render/palette.h`'s `window_backdrop`).
 
 ## src/render
 

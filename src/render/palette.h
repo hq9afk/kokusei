@@ -66,6 +66,8 @@ inline constexpr Color critical_alpha15 = color("#F4474726");
 
 inline constexpr Color warn = color("#E0A83A");
 
+inline constexpr Color window_backdrop = color("#000000B3");
+
 } // namespace palette
 
 namespace metrics {

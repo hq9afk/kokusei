@@ -33,6 +33,8 @@
 
 #include "service/mpris_service.h"
 
+constexpr Color kPenanceResGaugeGpuColor = color(kPenanceResGaugeGpuColorHex);
+
 namespace {
 
 void penance_paint(PenanceState &st, PenanceOutputSurface &los);

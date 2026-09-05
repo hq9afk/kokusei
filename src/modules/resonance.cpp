@@ -16,14 +16,15 @@
 
 #include "render/gl.h"
 #include "render/overlay_panel.h"
+#include "render/palette.h"
 
 namespace {
 
 void clear_backbuffer(ResonanceState &state, int width, int height) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, width, height);
-    glClearColor(kResonanceWindowBackground.r, kResonanceWindowBackground.g,
-                 kResonanceWindowBackground.b, kResonanceWindowBackground.a);
+    glClearColor(palette::window_backdrop.r, palette::window_backdrop.g,
+                 palette::window_backdrop.b, palette::window_backdrop.a);
     glClear(GL_COLOR_BUFFER_BIT);
     if (!eglSwapBuffers(state.base.egl_display, state.base.egl_surface))
         klog("resonance: eglSwapBuffers failed 0x%x", eglGetError());
