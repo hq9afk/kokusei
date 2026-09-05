@@ -10,6 +10,8 @@
 
 #include "app/ipc.h"
 
+#include "config/resonance_config.h"
+
 #include "modules/resonance/audio_capture.h"
 
 #include "render/toplevel_window.h"
@@ -22,6 +24,7 @@ struct ResonanceRenderThreadState {
     std::mutex mutex;
     std::condition_variable cv;
     bool shutdown = false;
+    ResonanceParams params;
 };
 
 struct ResonanceState {
@@ -36,6 +39,9 @@ struct ResonanceState {
 };
 
 void resonance_shutdown(ResonanceState &state);
+
+void resonance_apply_params(ResonanceState &state,
+                            const ResonanceParams &params);
 
 void resonance_toggle(ResonanceState &state, WaylandState &app);
 

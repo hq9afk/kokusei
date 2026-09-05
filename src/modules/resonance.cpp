@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <vector>
 
@@ -52,30 +53,30 @@ void render_thread_main(ResonanceState *state) {
     int audio_size = 0;
     int tick = 0;
     int logged_frames = 0;
-    bool warm = false;
-    constexpr float kWarmupThresholdMs = 30.0f;
-    constexpr float kPresentThresholdMs = 60.0f;
+    bool first_frame_done = false;
     auto last_heartbeat = std::chrono::steady_clock::now();
     int heartbeat_frames = 0;
     float heartbeat_blob_ms = 0.0f;
 
-    constexpr std::chrono::nanoseconds kStep{1'000'000'000 / kResonanceFps};
     auto next = std::chrono::steady_clock::now();
 
     ResonanceRenderThreadState &ts = *state->thread_state;
     for (;;) {
+        ResonanceParams params;
         {
             std::unique_lock<std::mutex> lock(ts.mutex);
             if (ts.cv.wait_until(lock, next, [&] { return ts.shutdown; }))
                 break;
+            params = ts.params;
         }
         auto now = std::chrono::steady_clock::now();
-        next += kStep;
+        int fps = std::clamp(params.fps, kResonanceFpsMin, kResonanceFpsMax);
+        next += std::chrono::nanoseconds(1'000'000'000 / fps);
         if (next < now)
             next = now;
 
         float fade = 0.0f;
-        if (warm) {
+        if (first_frame_done) {
             float ft = std::chrono::duration<float, std::milli>(
                            now - state->fade_start)
                            .count() /
@@ -112,36 +113,27 @@ void render_thread_main(ResonanceState *state) {
         bool trace = logged_frames < 40;
         auto t0 = std::chrono::steady_clock::now();
         if (audio_size > 0)
-            stages->run(audio_size, fft_l, fft_r);
+            stages->run(audio_size, fft_l, fft_r, fps);
         auto t1 = std::chrono::steady_clock::now();
 
         GLuint al = stages->ready() ? stages->smooth_l() : 0;
         GLuint ar = stages->ready() ? stages->smooth_r() : 0;
-        blob->render(width, height, tick, fade, al, ar, stages->size());
+        blob->render(width, height, tick, fade, al, ar, stages->size(), params);
         glFinish();
         auto t2 = std::chrono::steady_clock::now();
 
         float render_ms =
             std::chrono::duration<float, std::milli>(t2 - t0).count();
 
-        bool present = render_ms < kPresentThresholdMs;
-        if (present) {
-            if (!eglSwapBuffers(state->base.egl_display,
-                                state->base.egl_surface))
-                klog("resonance: eglSwapBuffers failed 0x%x", eglGetError());
-        } else {
-            klog("resonance: frame %d dropped (%.1fms, over %.0fms)", tick,
-                 render_ms, kPresentThresholdMs);
-        }
+        if (!eglSwapBuffers(state->base.egl_display, state->base.egl_surface))
+            klog("resonance: eglSwapBuffers failed 0x%x", eglGetError());
         auto t3 = std::chrono::steady_clock::now();
 
-        if (!warm) {
-            if (render_ms < kWarmupThresholdMs) {
-                warm = true;
-                state->fade_start = t3;
-                klog("resonance: warmed up at frame %d (%.1fms)", tick,
-                     render_ms);
-            }
+        if (!first_frame_done) {
+            first_frame_done = true;
+            state->fade_start = t3;
+            klog("resonance: first frame presented at %d (%.1fms)", tick,
+                 render_ms);
         }
 
         if (trace) {
@@ -177,7 +169,8 @@ void render_thread_main(ResonanceState *state) {
     gl_make_current(state->base.egl_display, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 }
 
-void resonance_render_thread_start(ResonanceState &state) {
+void resonance_render_thread_start(ResonanceState &state,
+                                   const ResonanceParams &params) {
     static const EGLint kContextAttribs[] = {
         EGL_CONTEXT_MAJOR_VERSION, 3, EGL_CONTEXT_MINOR_VERSION, 2, EGL_NONE};
     state.render_context =
@@ -188,10 +181,22 @@ void resonance_render_thread_start(ResonanceState &state) {
         return;
     }
     state.thread_state = std::make_unique<ResonanceRenderThreadState>();
+    state.thread_state->params = params;
     state.render_thread = std::thread(render_thread_main, &state);
 }
 
 } // namespace
+
+void resonance_apply_params(ResonanceState &state,
+                            const ResonanceParams &params) {
+    if (!state.thread_state)
+        return;
+    {
+        std::lock_guard<std::mutex> lock(state.thread_state->mutex);
+        state.thread_state->params = params;
+    }
+    state.thread_state->cv.notify_one();
+}
 
 void resonance_shutdown(ResonanceState &state) {
     state.capture.stop();
@@ -216,8 +221,8 @@ void resonance_toggle(ResonanceState &state, WaylandState &app) {
     if (state.base.egl_surface == EGL_NO_SURFACE) {
         if (!toplevel_window_create_surface(
                 state.base, app.compositor, app.wm_base, "Visualizer",
-                "kokusei-resonance", kResonanceSphereCanvas,
-                kResonanceSphereCanvas))
+                "kokusei-resonance", kResonanceDefaultWindow,
+                kResonanceDefaultWindow))
             return;
         while (!state.base.configured)
             wl_display_dispatch(app.display);
@@ -236,7 +241,7 @@ void resonance_toggle(ResonanceState &state, WaylandState &app) {
         state.base.open = true;
         state.fade_start = std::chrono::steady_clock::now();
         state.capture.start();
-        resonance_render_thread_start(state);
+        resonance_render_thread_start(state, app.cfg.resonance);
         return;
     }
 

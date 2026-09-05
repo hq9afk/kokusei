@@ -76,14 +76,38 @@ void ResonanceBlobPipeline::destroy() {
     *this = ResonanceBlobPipeline{};
 }
 
-void ResonanceBlobPipeline::ensure_targets() {
-    if (atomic_tex_)
+void ResonanceBlobPipeline::ensure_targets(int canvas) {
+    if (atomic_tex_ && canvas == canvas_)
         return;
+
+    if (atomic_tex_) {
+        glDeleteTextures(1, &atomic_tex_);
+        atomic_tex_ = 0;
+    }
+    for (GLuint &t : fbo_tex_)
+        if (t) {
+            glDeleteTextures(1, &t);
+            t = 0;
+        }
+    for (GLuint &f : fbo_)
+        if (f) {
+            glDeleteFramebuffers(1, &f);
+            f = 0;
+        }
+    if (glow_tex_) {
+        glDeleteTextures(1, &glow_tex_);
+        glow_tex_ = 0;
+    }
+    if (glow_fbo_) {
+        glDeleteFramebuffers(1, &glow_fbo_);
+        glow_fbo_ = 0;
+    }
+
+    canvas_ = canvas;
 
     glGenTextures(1, &atomic_tex_);
     glBindTexture(GL_TEXTURE_2D, atomic_tex_);
-    glTexStorage2D(GL_TEXTURE_2D, 1, GL_R32UI, kResonanceSphereCanvas,
-                   kResonanceSphereCanvas);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_R32UI, canvas, canvas);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     glBindFramebuffer(GL_FRAMEBUFFER, clear_fbo_);
@@ -97,9 +121,8 @@ void ResonanceBlobPipeline::ensure_targets() {
     for (int i = 0; i < 3; ++i) {
         glGenTextures(1, tex[i]);
         glBindTexture(GL_TEXTURE_2D, *tex[i]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, kResonanceSphereCanvas,
-                     kResonanceSphereCanvas, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-                     nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, canvas, canvas, 0, GL_RGBA,
+                     GL_UNSIGNED_BYTE, nullptr);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -126,15 +149,26 @@ void ResonanceBlobPipeline::draw_quad() {
 
 void ResonanceBlobPipeline::set_audio_uniforms(GLuint prog, GLuint audio_l_tex,
                                                GLuint audio_r_tex,
-                                               int audio_size, int tick) {
+                                               int audio_size, int tick,
+                                               int canvas,
+                                               const ResonanceParams &params) {
     glUniform2f(glGetUniformLocation(prog, "resolution"),
-                static_cast<float>(kResonanceSphereCanvas),
-                static_cast<float>(kResonanceSphereCanvas));
+                static_cast<float>(canvas), static_cast<float>(canvas));
     glUniform1f(glGetUniformLocation(prog, "time"), static_cast<float>(tick));
     glUniform1i(glGetUniformLocation(prog, "audioRSize"), audio_size);
     glUniform1i(glGetUniformLocation(prog, "audioLSize"), audio_size);
     glUniform3f(glGetUniformLocation(prog, "u_accent"), palette::accent.r,
                 palette::accent.g, palette::accent.b);
+    glUniform1f(glGetUniformLocation(prog, "particleThin"),
+                params.particle_thin);
+    glUniform1i(glGetUniformLocation(prog, "u_particleSize"),
+                params.particle_size);
+    glUniform1i(glGetUniformLocation(prog, "u_complexity"),
+                params.fractal_complexity);
+    glUniform1f(glGetUniformLocation(prog, "u_glowDirections"),
+                params.glow_directions);
+    glUniform1f(glGetUniformLocation(prog, "u_glowQuality"),
+                params.glow_quality);
 
     glActiveTexture(GL_TEXTURE0 + 1);
     glBindTexture(GL_TEXTURE_2D, audio_r_tex);
@@ -149,9 +183,12 @@ void ResonanceBlobPipeline::set_audio_uniforms(GLuint prog, GLuint audio_l_tex,
 
 void ResonanceBlobPipeline::render(int width, int height, int tick, float fade,
                                    GLuint audio_l_tex, GLuint audio_r_tex,
-                                   int audio_size) {
+                                   int audio_size,
+                                   const ResonanceParams &params) {
     if (!ready_ || width <= 0 || height <= 0)
         return;
+
+    int canvas = resonance_canvas_size(width, height);
 
     static int trace_frames = 8;
     bool trace = trace_frames > 0;
@@ -168,8 +205,8 @@ void ResonanceBlobPipeline::render(int width, int height, int tick, float fade,
                  .count());
     };
 
-    bool first_targets = atomic_tex_ == 0;
-    ensure_targets();
+    bool first_targets = atomic_tex_ == 0 || canvas != canvas_;
+    ensure_targets(canvas);
     if (first_targets)
         mark("ensure_targets");
 
@@ -178,7 +215,7 @@ void ResonanceBlobPipeline::render(int width, int height, int tick, float fade,
 
     for (GLuint fbo : {fbo_[0], fbo_[1], glow_fbo_}) {
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-        glViewport(0, 0, kResonanceSphereCanvas, kResonanceSphereCanvas);
+        glViewport(0, 0, canvas, canvas);
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT);
     }
@@ -187,14 +224,16 @@ void ResonanceBlobPipeline::render(int width, int height, int tick, float fade,
 
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_[0]);
     glUseProgram(ncs1_prog_);
-    set_audio_uniforms(ncs1_prog_, audio_l_tex, audio_r_tex, audio_size, tick);
+    set_audio_uniforms(ncs1_prog_, audio_l_tex, audio_r_tex, audio_size, tick,
+                       canvas, params);
     draw_quad();
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     mark("ncs1");
 
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_[1]);
     glUseProgram(ncs2_prog_);
-    set_audio_uniforms(ncs2_prog_, audio_l_tex, audio_r_tex, audio_size, tick);
+    set_audio_uniforms(ncs2_prog_, audio_l_tex, audio_r_tex, audio_size, tick,
+                       canvas, params);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, fbo_tex_[0]);
     glUniform1i(glGetUniformLocation(ncs2_prog_, "tex"), 0);
@@ -205,7 +244,8 @@ void ResonanceBlobPipeline::render(int width, int height, int tick, float fade,
 
     glBindFramebuffer(GL_FRAMEBUFFER, glow_fbo_);
     glUseProgram(glow_prog_);
-    set_audio_uniforms(glow_prog_, audio_l_tex, audio_r_tex, audio_size, tick);
+    set_audio_uniforms(glow_prog_, audio_l_tex, audio_r_tex, audio_size, tick,
+                       canvas, params);
     glUniform1f(glGetUniformLocation(glow_prog_, "u_fade"), fade);
     glUniform4f(glGetUniformLocation(glow_prog_, "u_backdrop"),
                 kResonanceWindowBackground.r, kResonanceWindowBackground.g,
@@ -216,18 +256,16 @@ void ResonanceBlobPipeline::render(int width, int height, int tick, float fade,
     draw_quad();
     mark("glow");
 
-    int off_x = (width - kResonanceSphereCanvas) / 2;
-    int off_y = (height - kResonanceSphereCanvas) / 2;
+    int off_x = (width - canvas) / 2;
+    int off_y = (height - canvas) / 2;
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     glViewport(0, 0, width, height);
     glClearColor(kResonanceWindowBackground.r, kResonanceWindowBackground.g,
                  kResonanceWindowBackground.b, kResonanceWindowBackground.a);
     glClear(GL_COLOR_BUFFER_BIT);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, glow_fbo_);
-    glBlitFramebuffer(0, 0, kResonanceSphereCanvas, kResonanceSphereCanvas,
-                      off_x, off_y, off_x + kResonanceSphereCanvas,
-                      off_y + kResonanceSphereCanvas, GL_COLOR_BUFFER_BIT,
-                      GL_LINEAR);
+    glBlitFramebuffer(0, 0, canvas, canvas, off_x, off_y, off_x + canvas,
+                      off_y + canvas, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);

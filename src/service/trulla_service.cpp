@@ -37,6 +37,35 @@ void trulla_service_apply_field_text(Config &cfg, TrullaFieldId id,
                 cfg.monitor_overrides[monitor].screensaver_timeout_seconds = v;
             break;
         }
+        case TrullaFieldId::ResonanceFps:
+            cfg.resonance.fps =
+                std::clamp(std::stoi(text), kResonanceFpsMin, kResonanceFpsMax);
+            break;
+        case TrullaFieldId::ResonanceParticleThin:
+            cfg.resonance.particle_thin =
+                std::clamp(std::stof(text), kResonanceParticleThinMin,
+                           kResonanceParticleThinMax);
+            break;
+        case TrullaFieldId::ResonanceParticleSize:
+            cfg.resonance.particle_size =
+                std::clamp(std::stoi(text), kResonanceParticleSizeMin,
+                           kResonanceParticleSizeMax);
+            break;
+        case TrullaFieldId::ResonanceComplexity:
+            cfg.resonance.fractal_complexity =
+                std::clamp(std::stoi(text), kResonanceComplexityMin,
+                           kResonanceComplexityMax);
+            break;
+        case TrullaFieldId::ResonanceGlowDirections:
+            cfg.resonance.glow_directions =
+                std::clamp(std::stof(text), kResonanceGlowDirectionsMin,
+                           kResonanceGlowDirectionsMax);
+            break;
+        case TrullaFieldId::ResonanceGlowQuality:
+            cfg.resonance.glow_quality =
+                std::clamp(std::stof(text), kResonanceGlowQualityMin,
+                           kResonanceGlowQualityMax);
+            break;
         default:
             break;
         }

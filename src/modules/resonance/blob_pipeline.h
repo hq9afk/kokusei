@@ -2,19 +2,23 @@
 
 #include <GLES3/gl32.h>
 
+#include "config/resonance_config.h"
+
 class ResonanceBlobPipeline {
   public:
     bool init();
     void destroy();
 
     void render(int width, int height, int tick, float fade, GLuint audio_l_tex,
-                GLuint audio_r_tex, int audio_size);
+                GLuint audio_r_tex, int audio_size,
+                const ResonanceParams &params);
 
   private:
-    void ensure_targets();
+    void ensure_targets(int canvas);
     void draw_quad();
     void set_audio_uniforms(GLuint prog, GLuint audio_l_tex, GLuint audio_r_tex,
-                            int audio_size, int tick);
+                            int audio_size, int tick, int canvas,
+                            const ResonanceParams &params);
 
     GLuint ncs1_prog_ = 0;
     GLuint ncs2_prog_ = 0;
@@ -30,5 +34,6 @@ class ResonanceBlobPipeline {
     GLuint vao_ = 0;
     GLuint vbo_ = 0;
 
+    int canvas_ = 0;
     bool ready_ = false;
 };

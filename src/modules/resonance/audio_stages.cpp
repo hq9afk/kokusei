@@ -199,7 +199,7 @@ void ResonanceAudioStages::run_channel(int offset, int size) {
     glBindTexture(GL_TEXTURE_2D, pass_tex);
     glUniform1i(glGetUniformLocation(gravity_prog_, "audioR"), offset);
     glUniform1f(glGetUniformLocation(gravity_prog_, "diff"),
-                kResonanceGravityStep / static_cast<float>(kResonanceFps));
+                kResonanceGravityStep / static_cast<float>(fps_));
     glViewport(0, 0, size, 1);
     draw_quad();
     glFinish();
@@ -255,13 +255,14 @@ void ResonanceAudioStages::run_channel(int offset, int size) {
 }
 
 bool ResonanceAudioStages::run(int size, const std::vector<float> &l,
-                               const std::vector<float> &r) {
+                               const std::vector<float> &r, int fps) {
     if (!ready_ || size <= 0)
         return false;
     if (static_cast<int>(l.size()) < size || static_cast<int>(r.size()) < size)
         return false;
 
     size_ = size;
+    fps_ = fps;
 
     if (!raw_r_) {
         std::vector<uint16_t> zeros(static_cast<size_t>(size), 0);

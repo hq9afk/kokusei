@@ -380,8 +380,12 @@ mat3 rotateZ(float angle)
 
 inline constexpr const char *kConfig = R"GLSL(
 #define colorTracking 0
-#define particleThin 0.12
 uniform vec3 u_accent;
+uniform highp float particleThin;
+uniform int u_particleSize;
+uniform int u_complexity;
+uniform highp float u_glowDirections;
+uniform highp float u_glowQuality;
 void init()
 {
     audio.multiplier = 6.4;
@@ -390,13 +394,13 @@ void init()
 void setProps()
 {
     particle.color = vec4(u_accent, 0.3);
-    particle.size = 4;
+    particle.size = u_particleSize;
     particle.feather = 1.0;
     particle.colorIntensityAddStrength = 0.38;
     particle.antiAlias = 8.5;
     fractalField.octaveMultiplier = 0.25;
     fractalField.octaveScale = 1.0;
-    fractalField.complexity = 3;
+    fractalField.complexity = u_complexity;
     fractalField.fScale = 9.473;
     fractalField.gamma = 1.0;
     fractalField.minVal = -5.0;
@@ -415,8 +419,8 @@ void setGlow0(inout Glow glow)
     glow.mixAlpha = 1.0;
     glow.intensity = 1.0;
     glow.size = vec2(18);
-    glow.directions = 16.0;
-    glow.quality = 6.0;
+    glow.directions = u_glowDirections;
+    glow.quality = u_glowQuality;
     glow.color = vec4(u_accent, 1.0);
     glow.brightnessOffset = .0;
     glow.lightStrength = .5;
@@ -673,8 +677,13 @@ void main()
     defaultSphereValues();
     init();
     setAudio();
-    ivec3 spaces = ivec3(round((vec3(resolution.xy, baseForm.zSize)) / (vec3(baseForm.numParticles - step(float(baseForm.type), 0.0) * vec3(1, 1, 1)))));
+    vec3 denom = vec3(baseForm.numParticles - step(float(baseForm.type), 0.0) * vec3(1, 1, 1));
+    denom = max(denom, vec3(0.0001));
+    ivec3 spaces = ivec3(round((vec3(resolution.xy, baseForm.zSize)) / denom));
     spaces -= int(step(float(baseForm.type), 0.0)) * ivec3(1, 1, 1);
+    spaces.x = max(spaces.x, 1);
+    spaces.y = max(spaces.y, 1);
+    spaces.z = (baseForm.numParticles.z <= 1.0) ? int(baseForm.zSize) + 1 : max(spaces.z, 1);
     particle.position.z -= (baseForm.numParticles.z - 1.0) * float(spaces.z) / 2.;
     particle.position.xy += step(baseForm.numParticles.xy, vec2(1)) * vec2(resolution.xy / 2.);
     int currentZIndex = 0;

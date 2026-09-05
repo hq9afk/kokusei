@@ -10,6 +10,7 @@
 #include "service/input_service.h"
 
 struct WaylandState;
+struct Config;
 
 class Module {
   public:
@@ -34,6 +35,8 @@ class Module {
     virtual bool opened_by_widget() const { return false; }
     virtual wl_output *bound_output() const { return nullptr; }
     virtual void toggle_from_widget(WaylandState &) {}
+
+    virtual void apply_config(WaylandState &, const Config &) {}
 
     virtual void handle_click(WaylandState &, double, double) {}
     virtual void handle_key_event(WaylandState &, const KeyEvent &) {}

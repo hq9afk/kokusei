@@ -569,6 +569,10 @@ class ResonanceModule final : public Module {
         resonance_handle_key_event(state_, app, event);
     }
 
+    void apply_config(WaylandState &, const Config &cfg) override {
+        resonance_apply_params(state_, cfg.resonance);
+    }
+
     std::vector<IpcHandler> ipc_handlers(WaylandState &app) override {
         return resonance_ipc_handlers(state_, app);
     }

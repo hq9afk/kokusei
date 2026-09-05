@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include "config/resonance_config.h"
+
 inline std::string default_expanse_dir() {
     const char *home = getenv("HOME");
     return std::string(home ? home : "") + "/Pictures";
@@ -58,6 +60,8 @@ struct Config {
     uint32_t ambient_timeout_seconds = 150;
     bool screensaver_enabled = true;
     uint32_t screensaver_timeout_seconds = 300;
+
+    ResonanceParams resonance;
 };
 
 bool spark_effective_enabled(const Config &cfg,

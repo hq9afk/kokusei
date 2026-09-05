@@ -1,9 +1,20 @@
 #pragma once
 
+#include <algorithm>
+
 #include "render/palette.h"
 
-constexpr int kResonanceSphereCanvas = 1000;
+constexpr int kResonanceCanvasDivisor = 2;
+constexpr int kResonanceCanvasMin = 200;
+
+inline int resonance_canvas_size(int width, int height) {
+    int smaller = width < height ? width : height;
+    return std::max(kResonanceCanvasMin, smaller / kResonanceCanvasDivisor);
+}
+
 inline constexpr Color kResonanceWindowBackground = {0.0f, 0.0f, 0.0f, 0.7f};
+
+constexpr int kResonanceDefaultWindow = 1000;
 
 constexpr unsigned int kResonanceSampleRate = 11000;
 constexpr int kResonanceChannels = 2;
@@ -21,3 +32,27 @@ constexpr float kResonanceSampleRange = 0.9f;
 constexpr float kResonanceSampleScale = 8.0f;
 constexpr float kResonanceSmoothFactor = 0.025f;
 constexpr int kResonanceFps = 60;
+
+constexpr int kResonanceFpsMin = 15;
+constexpr int kResonanceFpsMax = 144;
+constexpr float kResonanceParticleThinMin = 0.0f;
+constexpr float kResonanceParticleThinMax = 0.95f;
+constexpr int kResonanceParticleSizeMin = 1;
+constexpr int kResonanceParticleSizeMax = 4;
+constexpr int kResonanceComplexityMin = 1;
+constexpr int kResonanceComplexityMax = 3;
+constexpr float kResonanceGlowDirectionsMin = 4.0f;
+constexpr float kResonanceGlowDirectionsMax = 32.0f;
+constexpr float kResonanceGlowQualityMin = 2.0f;
+constexpr float kResonanceGlowQualityMax = 8.0f;
+
+struct ResonanceParams {
+    int fps = kResonanceFps;
+    float particle_thin = 0.12f;
+    int particle_size = 4;
+    int fractal_complexity = 3;
+    float glow_directions = 16.0f;
+    float glow_quality = 6.0f;
+
+    bool operator==(const ResonanceParams &) const = default;
+};

@@ -130,6 +130,8 @@ void apply_config_update(WaylandState &app, Config new_cfg) {
     }
 
     app.cfg = new_cfg;
+    for (auto &m : app.overlays)
+        m->apply_config(app, app.cfg);
     for (auto &mon : app.outputs)
         for (auto &m : mon->modules)
             m->request_frame();

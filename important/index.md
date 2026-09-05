@@ -15,7 +15,7 @@
 - `ipc.h`+`.cpp`: Kokusei's own control socket, client/server request handling; verb table from each module.
 - `key_dispatch.h`+`.cpp`: Routes key events to whichever module owns the surface `KeyboardState::focused_surface` currently names, so `kokusei.cpp` never names a module's key handler.
 - `monitor_output.h`+`.cpp`: `MonitorOutput` per-output state, monitor create/activate/destroy lifecycle, config-apply orchestration, trulla retarget.
-- `module.h`: `Module` interface, the per-surface overlay boundary; default no-op virtuals, unnamed params.
+- `module.h`: `Module` interface, the per-surface overlay boundary; default no-op virtuals, unnamed params; `apply_config` hook fired for every overlay on a config change.
 - `per_monitor_module.h`: `PerMonitorModule` interface, the per-surface per-monitor boundary; default no-op virtuals, unnamed params.
 - `module_registry.h`+`.cpp`: `build_app_modules`/`build_per_monitor_modules` composition root, one subclass per overlay/per-monitor surface; also the `penance_notify_output_*`/`penance_is_locked` bridge so `app/` code reaches the penance module without a module include.
 - `wayland_registry.h`+`.cpp`: Wayland global registry bind/listener wiring, populates `WaylandState`'s globals; notifies the penance module of output hotplug.
@@ -35,11 +35,11 @@
 - `yuheng_config.h`: Yuheng card-stack geometry and gauge/temp-warn color constants.
 - `liyue_config.h`: Liyue workspace-grid geometry, timing, and live-capture throttle constants.
 - `expanse_config.h`: Expanse layer-shell namespace constant.
-- `trulla_config.h`: Trulla panel layout, opacity, animation, group, widget, popup, spinner constants, `TrullaFieldId` enum, and the four-entry nav-rail tab table.
+- `trulla_config.h`: Trulla panel layout, opacity, animation, group, widget, popup, spinner constants, `TrullaFieldId` enum, and the five-entry nav-rail tab table.
 - `stiletto_config.h`: Stiletto-rain window size, glyph/cell/timing constants.
 - `blink_config.h`: Blink recent-activity pulse and blink-overlay fade, logo-speed, and layer-namespace constants.
 - `penance_config.h`: Penance-screen card ratio, three-column and side-panel geometry, fetch/media/resources/notification-dock constants, dot/input/avatar sizes, entrance/exit animation timings, and per-property animation owner ids.
-- `resonance_config.h`: Audio resonance fixed `1000 px` square render canvas, `0.7` black backdrop, `11 kHz` stereo capture, CPU FFT, and GLava GPU-transform constants.
+- `resonance_config.h`: Audio resonance surface-derived square render canvas (`min(w,h)/2`), `0.7` black backdrop, `11 kHz` stereo capture, CPU FFT, GLava GPU-transform constants, plus `ResonanceParams` runtime knobs (fps, particle thin/size, fractal complexity, glow directions/quality) and their clamp ranges.
 
 ## src/render
 
@@ -119,7 +119,7 @@
 - `blink.h`+`.cpp`: Recent-activity blink clock feeding the per-monitor ambient/screensaver overlay surface; screensaver bounces an `AnimatedImage` logo, freed while not shown.
 - `trulla.h`+`.cpp`: Trulla panel core, hosts per-tab modules, responsive nav rail, owns shared toggle-row widgets and `draw_profile_block`.
 - `stiletto.h`+`.cpp`: Stiletto-rain overlay, a real `xdg_toplevel` window, rebuilds the grid on live resize.
-- `resonance.h`+`.cpp`: Audio resonance overlay window; ported `ncs`/WayVes Perlin-noise blob (tinted to `accent` over a `0.7` black backdrop) plus `glow` post pass, fed by own `11 kHz` stereo PipeWire capture, CPU FFT, and a GLava GPU transform chain; dedicated render thread and share-context `EGLContext`.
+- `resonance.h`+`.cpp`: Audio resonance overlay window; ported `ncs`/WayVes Perlin-noise blob (tinted to `accent` over a `0.7` black backdrop) plus `glow` post pass, fed by own `11 kHz` stereo PipeWire capture, CPU FFT, and a GLava GPU transform chain; dedicated render thread and share-context `EGLContext`; render thread self-paces to `ResonanceParams::fps` and reads live knobs via `resonance_apply_params` (`Module::apply_config`).
 - `penance.h`+`.cpp`: `ext-session-lock-v1` session lock; one lock surface per `wl_output`, `PAM` auth on a worker thread, `caelestia`-style fixed-ratio card with a three-column layout (battery/fetch/media, center clock+date+avatar+pill, resources/notifications) drawn from `mpris`/`system_stats`/`cpu_temp`/`gpu_temp`/`upower`/`notification_service`, entrance/exit spin-expand choreography.
 
 ## src/modules/starward
@@ -131,7 +131,7 @@
 - `fft.h`+`.cpp`: Radix-2 DIT FFT (`GLava`-derived, GPL-3.0), Hann window plus `log`/`fftScale`/`fftCutOff` magnitude tilt; `EGL`-free, linked into the test binary.
 - `audio_capture.h`+`.cpp`: Own `pw_thread_loop` `11 kHz` stereo sink capture; `ncs` ring/fragment bookkeeping into `4096`-sample L/R buffers, `take()` snapshot under a mutex.
 - `audio_stages.h`+`.cpp`: Render-thread GLava GPU transform chain (`pass` peak-hold + `gravity` decay -> 5-frame ring -> Hann `average` -> frequency-domain `smooth`) over `Nx1` `GL_R16` textures, for L and R.
-- `blob_pipeline.h`+`.cpp`: Render-thread `ncs-1` (atomic-image particle accumulation) -> `ncs-2` (blob resolve) -> `glow` post, all at a fixed `1000 px` square canvas (`kResonanceSphereCanvas`), with an `r32ui` image texture, three `RGBA8` FBOs, `glMemoryBarrier` between stages, `u_fade`/`u_accent`/`u_backdrop` uniforms (`glow` composites the `0.7` black backdrop source-over), and a centered `glBlitFramebuffer` compositing the canvas onto the window surface.
+- `blob_pipeline.h`+`.cpp`: Render-thread `ncs-1` (atomic-image particle accumulation) -> `ncs-2` (blob resolve) -> `glow` post, at a square canvas of `resonance_canvas_size(surfaceW, surfaceH)` rebuilt (atomic texture + three `RGBA8` FBOs) whenever the surface size changes, with `glMemoryBarrier` between stages, `u_fade`/`u_accent`/`u_backdrop` plus the `ResonanceParams` knob uniforms (`particleThin`/`u_particleSize`/`u_complexity`/`u_glowDirections`/`u_glowQuality`), and a centered `glBlitFramebuffer` compositing the canvas onto the window surface.
 - `resonance_shaders.h`: The eight flattened `ncs` shader stages as string fragments (includes inlined, `#expand` hand-expanded), assembled at runtime.
 
 ## src/modules/penance
@@ -155,6 +155,7 @@
 - `displays_tab.h`+`.cpp`: Per-tab trulla UI and commit logic.
 - `blink_tab.h`+`.cpp`: Per-tab trulla UI and commit logic.
 - `starward_tab.h`+`.cpp`: Per-tab trulla UI and commit logic (central-logo static/animated toggle).
+- `resonance_tab.h`+`.cpp`: Per-tab trulla UI and commit logic; number-field row per `ResonanceParams` knob with per-row reset.
 
 ## src/modules/qixing
 

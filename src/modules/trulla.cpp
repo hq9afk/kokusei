@@ -12,6 +12,7 @@
 #include "modules/trulla.h"
 #include "modules/trulla/blink_tab.h"
 #include "modules/trulla/displays_tab.h"
+#include "modules/trulla/resonance_tab.h"
 #include "modules/trulla/starward_tab.h"
 
 #include "render/gl.h"
@@ -34,6 +35,13 @@ std::string trulla_detail_format_field(const Config &cfg, TrullaFieldId id,
     case TrullaFieldId::ScreensaverTimeout:
         return std::to_string(
             screensaver_effective_timeout_seconds(cfg, monitor));
+    case TrullaFieldId::ResonanceFps:
+    case TrullaFieldId::ResonanceParticleThin:
+    case TrullaFieldId::ResonanceParticleSize:
+    case TrullaFieldId::ResonanceComplexity:
+    case TrullaFieldId::ResonanceGlowDirections:
+    case TrullaFieldId::ResonanceGlowQuality:
+        return resonance_field_text(cfg.resonance, id);
     default:
         return "";
     }
@@ -194,7 +202,8 @@ void trulla_handle_click(TrullaState &state, const Config &cfg,
         case PanelClickKind::ToggleFlip:
             if (!expanse_tab_handle_click(state, cfg, on_commit, region) &&
                 !displays_tab_handle_click(state, cfg, on_commit, region) &&
-                !blink_tab_handle_click(state, cfg, on_commit, region))
+                !blink_tab_handle_click(state, cfg, on_commit, region) &&
+                !resonance_tab_handle_click(state, cfg, on_commit, region))
                 starward_tab_handle_click(state, cfg, on_commit, region);
             return;
         case PanelClickKind::FieldFocus:
@@ -513,6 +522,11 @@ void trulla_paint(TrullaState &state, const Config &cfg,
         case TrullaTab::Starward: {
             float row_w = panel_x + panel_w - kPanelPadding - label_x;
             starward_tab_paint(state, root, scale, label_x, y, row_w, cfg);
+            break;
+        }
+        case TrullaTab::Resonance: {
+            float row_w = panel_x + panel_w - kPanelPadding - label_x;
+            resonance_tab_paint(state, root, scale, label_x, y, row_w, cfg);
             break;
         }
         }

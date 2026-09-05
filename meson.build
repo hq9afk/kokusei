@@ -262,6 +262,7 @@ kokusei_trulla_main_only_sources = [
   'src/modules/trulla/displays_tab.cpp',
   'src/modules/trulla/blink_tab.cpp',
   'src/modules/trulla/starward_tab.cpp',
+  'src/modules/trulla/resonance_tab.cpp',
 ]
 
 kokusei_split_sources = [

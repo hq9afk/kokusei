@@ -11,9 +11,15 @@ enum class TrullaFieldId {
     ExpanseAnimatedDir,
     AmbientTimeout,
     ScreensaverTimeout,
+    ResonanceFps,
+    ResonanceParticleThin,
+    ResonanceParticleSize,
+    ResonanceComplexity,
+    ResonanceGlowDirections,
+    ResonanceGlowQuality,
 };
 
-constexpr int kTrullaTabCount = 4;
+constexpr int kTrullaTabCount = 5;
 
 inline constexpr const char *kTrullaDisplaysDefaultTag = "__default__";
 
@@ -142,8 +148,7 @@ struct TrullaTabDef {
 };
 
 inline constexpr TrullaTabDef kTrullaTabs[kTrullaTabCount] = {
-    {"Wallpaper", icon::wallpaper},
-    {"Displays", icon::device_desktop},
-    {"Idle", icon::moon_stars},
-    {"Starward", icon::power},
+    {"Wallpaper", icon::wallpaper}, {"Displays", icon::device_desktop},
+    {"Idle", icon::moon_stars},     {"Starward", icon::power},
+    {"Resonance", icon::wave_sine},
 };

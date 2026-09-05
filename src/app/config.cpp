@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdio>
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -238,6 +239,28 @@ Config load_config() {
             blink.value("screensaverEnabled", cfg.screensaver_enabled);
         cfg.screensaver_timeout_seconds = blink.value(
             "screensaverTimeoutSeconds", cfg.screensaver_timeout_seconds);
+
+        nlohmann::json resonance =
+            j.value("resonance", nlohmann::json::object());
+        cfg.resonance.fps =
+            std::clamp(resonance.value("fps", cfg.resonance.fps),
+                       kResonanceFpsMin, kResonanceFpsMax);
+        cfg.resonance.particle_thin = std::clamp(
+            resonance.value("particleThin", cfg.resonance.particle_thin),
+            kResonanceParticleThinMin, kResonanceParticleThinMax);
+        cfg.resonance.particle_size = std::clamp(
+            resonance.value("particleSize", cfg.resonance.particle_size),
+            kResonanceParticleSizeMin, kResonanceParticleSizeMax);
+        cfg.resonance.fractal_complexity =
+            std::clamp(resonance.value("fractalComplexity",
+                                       cfg.resonance.fractal_complexity),
+                       kResonanceComplexityMin, kResonanceComplexityMax);
+        cfg.resonance.glow_directions = std::clamp(
+            resonance.value("glowDirections", cfg.resonance.glow_directions),
+            kResonanceGlowDirectionsMin, kResonanceGlowDirectionsMax);
+        cfg.resonance.glow_quality = std::clamp(
+            resonance.value("glowQuality", cfg.resonance.glow_quality),
+            kResonanceGlowQualityMin, kResonanceGlowQualityMax);
     } catch (const nlohmann::json::exception &) {
     }
     return cfg;
@@ -307,12 +330,21 @@ void save_config(const Config &cfg) {
     blink["screensaverEnabled"] = cfg.screensaver_enabled;
     blink["screensaverTimeoutSeconds"] = cfg.screensaver_timeout_seconds;
 
+    nlohmann::json resonance;
+    resonance["fps"] = cfg.resonance.fps;
+    resonance["particleThin"] = cfg.resonance.particle_thin;
+    resonance["particleSize"] = cfg.resonance.particle_size;
+    resonance["fractalComplexity"] = cfg.resonance.fractal_complexity;
+    resonance["glowDirections"] = cfg.resonance.glow_directions;
+    resonance["glowQuality"] = cfg.resonance.glow_quality;
+
     nlohmann::json j;
     j["qixing"] = {{"autohideEnabled", cfg.autohide}};
     j["expanse"] = expanse;
     j["displays"] = displays;
     j["starward"] = {{"animatedLogo", cfg.starward_animated_logo}};
     j["blink"] = blink;
+    j["resonance"] = resonance;
 
     if (!write_file_atomic(path, j.dump(2)))
         klog("config: failed to save %s", path.c_str());

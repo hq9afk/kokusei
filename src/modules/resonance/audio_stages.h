@@ -3,12 +3,15 @@
 #include <GLES3/gl32.h>
 #include <vector>
 
+#include "config/resonance_config.h"
+
 class ResonanceAudioStages {
   public:
     bool init();
     void destroy();
 
-    bool run(int size, const std::vector<float> &l, const std::vector<float> &r);
+    bool run(int size, const std::vector<float> &l, const std::vector<float> &r,
+             int fps);
 
     GLuint smooth_l() const { return smooth_.tex_l; }
     GLuint smooth_r() const { return smooth_.tex_r; }
@@ -48,5 +51,6 @@ class ResonanceAudioStages {
     int out_idx_ = 0;
     int out_idx_l_ = 0;
     int size_ = 0;
+    int fps_ = kResonanceFps;
     bool ready_ = false;
 };
