@@ -18,6 +18,11 @@
 - A module shall manage its internal works, without bleeding into `kokusei.cpp`.
 - `kokusei.cpp` shall not include specific components belonging to a module.
 
+## Config headers
+
+- `src/config/*.h` holds constants and plain data types only, no function bodies
+  (helpers that compute from a config value live with their consumer).
+
 ## Includes
 
 - `meson.build` adds `include_directories('src')` to both the `kokusei` and `kokusei-test` targets.

@@ -16,6 +16,13 @@ namespace {
 constexpr GLfloat kQuadVerts[18] = {-1, -1, 0, 1, -1, 0, -1, 1, 0,
                                     1,  1,  0, 1, -1, 0, -1, 1, 0};
 
+int resonance_canvas_size(int width, int height) {
+    int smaller = width < height ? width : height;
+    int size = static_cast<int>(static_cast<float>(smaller) *
+                                kResonanceCanvasFraction);
+    return size < kResonanceCanvasMin ? kResonanceCanvasMin : size;
+}
+
 } // namespace
 
 bool ResonanceBlobPipeline::init() {

@@ -1,16 +1,9 @@
 #pragma once
 
-#include <algorithm>
-
 #include "render/palette.h"
 
-constexpr int kResonanceCanvasDivisor = 2;
+constexpr float kResonanceCanvasFraction = 0.9f;
 constexpr int kResonanceCanvasMin = 200;
-
-inline int resonance_canvas_size(int width, int height) {
-    int smaller = width < height ? width : height;
-    return std::max(kResonanceCanvasMin, smaller / kResonanceCanvasDivisor);
-}
 
 inline constexpr Color kResonanceWindowBackground = {0.0f, 0.0f, 0.0f, 0.7f};
 
@@ -53,6 +46,4 @@ struct ResonanceParams {
     int fractal_complexity = 3;
     float glow_directions = 16.0f;
     float glow_quality = 6.0f;
-
-    bool operator==(const ResonanceParams &) const = default;
 };

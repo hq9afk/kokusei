@@ -39,7 +39,7 @@
 - `stiletto_config.h`: Stiletto-rain window size, glyph/cell/timing constants.
 - `blink_config.h`: Blink recent-activity pulse and blink-overlay fade, logo-speed, and layer-namespace constants.
 - `penance_config.h`: Penance-screen card ratio, three-column and side-panel geometry, fetch/media/resources/notification-dock constants, dot/input/avatar sizes, entrance/exit animation timings, and per-property animation owner ids.
-- `resonance_config.h`: Audio resonance surface-derived square render canvas (`min(w,h)/2`), `0.7` black backdrop, `11 kHz` stereo capture, CPU FFT, GLava GPU-transform constants, plus `ResonanceParams` runtime knobs (fps, particle thin/size, fractal complexity, glow directions/quality) and their clamp ranges.
+- `resonance_config.h`: Audio resonance surface-derived square render canvas (`0.75 * min(w,h)`), `0.7` black backdrop, `11 kHz` stereo capture, CPU FFT, GLava GPU-transform constants, plus `ResonanceParams` runtime knobs (fps, particle thin/size, fractal complexity, glow directions/quality) and their clamp ranges.
 
 ## src/render
 
