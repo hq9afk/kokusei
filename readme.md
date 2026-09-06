@@ -19,7 +19,7 @@ sudo pacman -Syu --needed base-devel meson ninja mesa wayland wayland-protocols 
 ```bash
 git clone https://github.com/Hq9afk/kokusei.git
 cd kokusei
-./dist/install.sh
+./build.sh install
 ```
 
 ## Running the shell

@@ -34,15 +34,7 @@ Drop an entry once newer knowledge fully supersedes it.
 - **A timer- or signal-driven service must gate its redraw callback on a real state diff.** `bluetooth_tick` repainted every surface once per second unconditionally; compare state and set a `dirty` flag.
 - **Reacting to every NetworkManager `State`/`ActiveConnections` change with `nmcli --rescan yes` self-amplifies.** Forced rescans delay association and emit more state churn; debounce through `schedule_rescan`.
 
-## 2. Debugging methodology
-
-- **Three plausible root-cause theories were wrong before the real one was found.** Every theory was ruled out by measurement, not argument.
-- **A /proc process watcher plus timestamped logs and gdb backtraces located the real bug.** Only correlating both sides' timestamps distinguished "child is slow" from "we missed it finishing."
-- **A stopgap workaround left after its cause is fixed becomes a silent regression.** `fd --threads 4` stayed after the real fix, silently halving all search parallelism.
-- **Fix the shared function, not just the caller that reported the bug.** The same defect usually routes through every sibling caller too.
-- **Restore `kernel.yama.ptrace_scope` to 1 after live debugging.** It was lowered to 0 temporarily so gdb could attach without sudo.
-
-## 3. Rendering
+## 2. Rendering
 
 - **Don't render the Tabler icon font via fontconfig plus Pango.** Late-registered app fonts aren't reliably picked up by Pango's font map; use FreeType+Cairo directly.
 - **kokusei clips using scissor rects plus a corner inset, not a stencil buffer.** Correct as long as nothing needs to visually touch a rounded edge.
@@ -140,7 +132,7 @@ Drop an entry once newer knowledge fully supersedes it.
 - **`ncs`'s `time` uniform is a frame counter paced to `fps` (default 60), and its GLava decay constants are per-frame at that rate.** `ncs` `nanosleep`s its render loop to `fps`; on a high-refresh display an un-paced port scrolls the `flows` noise and decays the spectrum too fast and the blob reads as over-reactive. `fps` is a `ResonanceParams` knob; the render thread's frame step AND the gravity-decay divisor (`ResonanceAudioStages::run`'s `fps` arg) both use the live value so lowering it stays wall-clock-consistent like `ncs`.
 - **`resonance`'s render thread self-paces and owns every `wl_surface` request; the poll thread never drives its frames.** The thread loops on `cv.wait_until` at `1 / params.fps` (snapshotted under the mutex each iteration), does its own `capture.take` / FFT / `stages->run` / `blob->render` / `eglSwapBuffers`, and reads the fade from a `fade_start` timestamp. Driving it from the poll-thread `FrameClock` deadlocked the frame pump on Mesa (see section 4). `resonance_toggle` clears `base.frame_clock.surface` so nothing arms a `wl_surface_frame` behind the thread's back.
 
-## 4. Wayland protocol
+## 3. Wayland protocol
 
 - **Wayland gives no way to query live which output the pointer is over.** Track it as a best-effort hint from your own surfaces' enter/motion events instead.
 - **Optional protocol events need sane fallback defaults, not zero.** Some compositors never send `repeat_info`; defaulting to 0/0 silently disables key repeat.
@@ -182,7 +174,7 @@ Drop an entry once newer knowledge fully supersedes it.
 - **A `pam_start_confdir` service needs an `account` rule, not just `auth`.** With none, `pam_acct_mgmt` returns `PAM_PERM_DENIED` and a correct password still fails.
 - **A `ToplevelWindowBase` surface with a dedicated render thread must not also be wired into the poll-thread `FrameClock`.** The `FrameClock` arms `wl_surface_frame` on the poll thread but the render thread's `eglSwapBuffers` is what commits; that split makes frame requests land on the wrong commit. On Mesa `wl_egl` (which drives the app's own surface proxy) the pump dies after frame one, so `resonance` never advanced its fade and showed only Hyprland's border, plus the mismatched traffic hitched the poll loop. nvidia's EGL platform services the window on a private `wl_event_queue`, so it was unaffected. The render thread now owns every `wl_surface` request and self-paces via `cv.wait_until` at `params.fps`; the poll thread only creates and tears down the surface. `resonance_toggle` clears `base.frame_clock.surface` after `init_egl` so `output_scale.on_change` cannot arm a frame.
 
-## 5. Async state correctness
+## 4. Async state correctness
 
 - **Never score an async operation's result against a live mutable field.** Freeze the input into its own field at start time and score against that instead.
 - **Capture a value synchronously at the action site rather than deferring to the next repaint.** Relying on an async dispatch path left panels opening at position zero on first use.
@@ -209,13 +201,8 @@ Drop an entry once newer knowledge fully supersedes it.
 - **Re-enabling idle management, or lowering a timeout mid-idle, must reset the per-monitor activity clock.** A stale `last_activity` otherwise fires the screensaver instantly; `apply_config_update` calls `idle_reset` on any idle-config change.
 - **A panel's staged dismissal must be coded identically in every dismiss path.** `Escape` collapsed the subpanel while outside-click closed the whole panel, because the branches were written separately.
 
-## 6. Architecture and scale discipline
+## 5. Architecture and scale discipline
 
-- **noctalia is a reference for ideas, not a template to copy wholesale.** It's roughly 45x kokusei's size; every adopted idea must be resized to kokusei's scale.
-- **Several noctalia subsystems were deliberately skipped, not overlooked.** A retained scene graph, backend abstraction, and scripting engine solve problems kokusei doesn't have.
-- **Config hot-reload was built, but schema-validated multi-file config remains rejected.** Only when the single file's contents change is it reloaded, not its structure.
-- **A config field lacking settings UI may need deletion, not a new control.** Check the reference project first; it may hardcode the same value with no UI either.
-- **noctalia's testing philosophy and logic/UI separation already matched kokusei's convention.** Naming what was already right matters as much as naming what needs to change.
 - **Check a reference technique against the full target hardware range, not one profiling machine.** An integrated-GPU-only measurement wrongly justified diverging from a technique discrete GPUs need.
 - **Animated wallpaper decode runs in-process via `libavcodec`/`libavfilter`, not a spawned `ffmpeg` per column.** Replaced three duplicated `ffmpeg` processes plus a raw-rgba pipe with one shared decode loop.
 - **Hardware decoder selection stays portable by trying a preference list of `AVHWDeviceType`s, not branching on hardware.** Tries `CUDA` then `VAAPI`, falling through to software.
@@ -224,11 +211,8 @@ Drop an entry once newer knowledge fully supersedes it.
 - **A decode filter graph can't be built before the first frame decodes.** `CUDA`/`VAAPI` transfer format varies by driver; the graph builds from the first decoded frame.
 - **Looping in-process decoded video needs a seek-and-flush, not a process restart.** `av_seek_frame` plus `avcodec_flush_buffers` on EOF replaces the `ffmpeg` CLI's loop flag.
 - **A decoder can hold a frame back internally, released only by the next `send_packet` or a flush.** Flushing before draining drops it; send a nullptr flush packet and drain first.
-- **A reference's per-output design choice can follow from threading, not correctness.** kokusei is single-threaded, needing one shared EGLContext; the visualizer window is a scoped exception.
 - **A glyph missing from the primary font shifts an entire line's baseline, not just that glyph.** `U+00B7` isn't in kokusei's font; Pango's fallback inflates line ascent. Use the em dash.
 - **noctalia's render architecture is one GL/scene thread, every style an ordinary `Node` on one opacity pipeline.** kokusei's earlier per-visual special-casing caused divergence; one shared Renderer/Scene path now matches it.
-- **An abstraction earns its place only by removing duplication that exists today.** A planned compositor-backend interface was dropped once its motivating duplication was already merged away.
-- **Build a generic primitive only once a second real caller is visible, not imaginable.** `DeferredCall` ended up with no caller and stays documented rather than wired in.
 - **`~` in a path is a display convention, never a real path.** `std::filesystem` never expands it, so `core/path_home.h` collapses `$HOME` only at UI/JSON edges and every stored or typed path passes `path_expand_home` before use.
 - **A default-plus-override config value must be cached on the consumer's own per-monitor state.** Re-resolving the tier chain on every hot-path read would turn 15 reads into map lookups.
 - **A resolved-with-fallback accessor and a raw-override accessor answer different questions.** A "remove override" control needs the raw override only; the fallback resolver makes it no-op wrongly.
@@ -256,24 +240,13 @@ Drop an entry once newer knowledge fully supersedes it.
 - **Every shell text input shares one caret blink and one per-character type-in pop, in `render/text_field`.** `overseer`/`penance` each had their own copy; `TextFieldTypeAnim` now serves all four with caller-passed manager and owner-id.
 - **Every `penance` card goes through one local `draw_card` chrome: `overlay` fill, 2px `accent` border, radius, optional bold title.** It mirrors `yuheng`'s `card_chrome_draw` but can't share it — that's bound to `yuheng`'s `TextureCache`, and cross-module include is banned.
 
-## 7. Build and workflow
-
 - **A file writer must create its own target directory, not assume something else did.** `write_file_atomic` silently failed `save_config()` on fresh installs; other writers already `mkdir()` first.
-- **Only the user runs `dist/install` and `dist/run`.** Both do real sudo actions or launch a live session; `dist/test` is safe to run freely.
-- **Batch edits and build once, not after every small change.** Reformat with clang-format after each edit, keeping comments short enough not to wrap.
-- **Bare `clang-format -i` reformats the whole file to 2-space LLVM default, not the project's 4-space style.** No `.clang-format` file exists; use `convention.md`'s `--style="{IndentWidth: 4}"` command.
-- **Tests are plain `main()` plus `<cassert>`, no framework.** Run timing-sensitive tests repeatedly before trusting them; races can pass once and fail later.
 - **Merging a module's pure logic and EGL/GL code into one file forces graphics deps onto the test binary.** Keep the `*_test_sources`/`*_main_only_sources` split so the test binary stays free of EGL/GL.
 - **kokusei has no runtime shader preprocessor; flatten ported multi-file shaders at authoring time.** `resonance` inlines every `#include` and hand-expands `#expand` into string fragments assembled at runtime.
-- **`glslangValidator` on the flattened shader text catches ES `int`/`float` and undeclared-identifier errors offline.** Dump each stage to a file and validate before a hardware run; it will not prove GL-runtime format support.
-- **`meson test` names are the registered test names, not executable file names.** Use `async_process`, not `test_async_process`, when invoking a specific test.
 - **Every bundled asset needs the installed-path-plus-dev-tree-fallback loading pattern.** A bare relative path resolves against the daemon's cwd, silently failing outside the source tree.
 - **A connect()-to-socket liveness probe is unreliable against a leftover socket file.** Prefer a flock()-guarded lock file, which the kernel releases automatically on process death.
-- **Grep the whole tree before hiding a `_detail::` helper in an anonymous namespace.** Some "internal-looking" helpers are actually called directly from other modules or tests.
 - **keqing-shell uses a separate `accentAlt` token for tile/chip selection borders, not `accent`.** `accent` is reserved for other UI like the nav rail and toggle track.
-- **A ported config header's constants must trace 1:1 to the QML source's actual values.** Invented "roughly similar" numbers drifted from real properties and missed computed geometry.
 - **A generically-named `constexpr` constant can collide with an identical name in an unrelated header.** Two modules that never include each other can still land in the same translation unit transitively.
-- **An include-path migration script must exclude generated protocol-header includes from rewriting.** They resolve as if under `src/` but are build-directory outputs, breaking only at compile time.
 - **Overseer is split: `modules/overseer.cpp` is main-executable-only; pure logic in `src/modules/overseer/*` compiles into both binaries.** A `src/modules/overseer/*` file can't gain a `WaylandState`-typed function; the file boundary enforces it.
 - **A module can't include another module's header, and `kokusei.cpp` can't name a module's function directly.** Cross-module orchestration — IPC verb table, key-dispatch table — lives in `src/app/` instead.
 - **One module can still trigger another by name through the generic `Module` interface.** Find it in `app.overlays` by `name()`, then call its `ipc_handlers()` and invoke the matching verb.
@@ -281,17 +254,13 @@ Drop an entry once newer knowledge fully supersedes it.
 - **A generic dispatcher needing another module's `open` flag should take a `bool`, not the full state struct.** `panel_pill()` took full state structs to read two fields; it now resolves bools itself.
 - **An enum shared between a module and its infrastructure-layer consumer belongs in `config/`, not the module's header.** `SettingsFieldId` lived in `settings.h`, forcing the service to include the whole module; moved to `config/`.
 - **A pure-logic function needed by a second feature module should move to `service/`.** `wallpaper_decode_scaled` lived in `wallpaper.cpp` until the settings tab needed it too, forcing the move.
-- **A `grep -rln '#include "modules/'` sweep across the whole tree catches violations a per-file review misses.** A reasoning-based pass found 4 violations; a full-tree grep found 2 more.
 - **A feature dir's private draw helper can be a verbatim copy of an existing `render/` primitive.** `bar/widget` had its own `add_rrect_node`/`add_texture_node`, byte-identical to `node_add_*`; grep `render/` first.
 - **A bar pill's widget file must be named for the pill, not bundled into a sibling.** `cpu_pill`/`tray_pill` lived in `dashboard_widget.cpp`, so no `system_monitor_widget`/`tray_widget` source existed.
 - **Removing a UI feature's draw code but leaving its click-kinds, state field, and handlers reads as live.** The settings dropdown kept `open_dropdown_id`, two `PanelClickKind`s, and handler cases after its last caller went.
-- **Every `src/service/` file now ends in `_service`, bare protocol wrappers included.** The old subsystem-vs-wrapper split is gone; `convention.md`'s file-naming note is stale.
-- **Renaming a `service/` header needs a tree-wide `grep 'service/<old>\.h'` plus both `meson.build` source arrays.** A per-consumer guess misses transitive includers and the build lists.
 - **Modules are named after Keqing, not their function; IPC verbs and code identifiers moved too.** See `index.md`'s `src/modules` for the name↔function map; `starward` is the only kept name.
 - **`config.cpp` reads new JSON keys with a legacy fallback.** `section()`/`pick()` try new names (`qixing`/`expanse`/`blink`/...) then old (`bar`/`wallpaper`/`idle`/...); the next save rewrites keys.
-- **A blanket identifier rename must protect external-API tokens from word-boundary regex.** `lock_guard`, `pw_thread_loop_lock`, `cairo_matrix`, `ext_session_lock_*`, `icon::lock`/`icon::wallpaper` all get mangled otherwise.
 
-## 8. Hyprland IPC
+## 6. Hyprland IPC
 
 - **This user's Hyprland build has the classic `dispatch <dispatcher> <args>` string protocol deprecated for Lua.** `hyprctl dispatch <X>` is shorthand for `hl.dispatch(X)`; `X` must be a `hl.dsp.*` call.
 - **`hypr_dispatch`'s transport (`"dispatch " + command` over the request socket) is correct; only the argument shape was wrong.** It had zero callers until `hypr_tile_*` proved a `hl.dsp.*` Lua-expression string works.
