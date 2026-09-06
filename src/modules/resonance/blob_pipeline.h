@@ -16,6 +16,7 @@ class ResonanceBlobPipeline {
   private:
     void ensure_targets(int canvas);
     void draw_quad();
+    void present(int width, int height, int canvas, float fade);
     void set_audio_uniforms(GLuint prog, GLuint audio_l_tex, GLuint audio_r_tex,
                             int audio_size, int tick, int canvas,
                             const ResonanceParams &params);
@@ -23,6 +24,7 @@ class ResonanceBlobPipeline {
     GLuint ncs1_prog_ = 0;
     GLuint ncs2_prog_ = 0;
     GLuint glow_prog_ = 0;
+    GLuint present_prog_ = 0;
 
     GLuint atomic_tex_ = 0;
     GLuint clear_fbo_ = 0;

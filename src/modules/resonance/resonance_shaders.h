@@ -757,7 +757,6 @@ uniform int audioLSize;
 uniform int audioRSize;
 uniform sampler2D tex;
 uniform float u_fade;
-uniform vec4 u_backdrop;
 out vec4 FragColor;
 #ifndef TWOPI
 #define TWOPI 6.28318530718
@@ -768,10 +767,28 @@ out vec4 FragColor;
 #define RAD_PI PI / 180.
 )GLSL";
 
+inline constexpr const char *kPresentVs = R"GLSL(#version 320 es
+layout(location = 0) in vec3 aPos;
+out vec2 vUv;
+void main() {
+    vUv = aPos.xy * 0.5 + 0.5;
+    gl_Position = vec4(aPos.xy, 0.0, 1.0);
+}
+)GLSL";
+
+inline constexpr const char *kPresentFs = R"GLSL(#version 320 es
+precision highp float;
+precision highp sampler2D;
+in vec2 vUv;
+uniform sampler2D tex;
+out vec4 FragColor;
+void main() { FragColor = texture(tex, vUv); }
+)GLSL";
+
 inline constexpr const char *kGlowMain = R"GLSL(
 float glowLightVal(float glowValue, float glowLightStrengthValue, float glowLightDistanceValue)
 {
-    return glowLightDistanceValue + glowLightDistanceValue / pow(glowValue, glowLightStrengthValue);
+    return glowLightDistanceValue + glowLightDistanceValue / pow(max(glowValue, 1e-4), glowLightStrengthValue);
 }
 vec4 addColors(float blendMode, vec4 above, vec4 below)
 {
@@ -819,7 +836,6 @@ void main()
     FragColor = addColors(glow.blendMode, mix(prevColor, FragColor, glow.onTop), mix(FragColor, prevColor, glow.onTop));
     FragColor *= glowLightVal(length(FragColor), glow.brightnessOffset, glow.lightStrength);
     FragColor.w = mix(prevColor.w, FragColor.w, glow.mixAlpha * 0.5);
-    FragColor += (1.0 - FragColor.w) * u_backdrop;
     FragColor *= u_fade;
 }
 )GLSL";

@@ -39,7 +39,10 @@ bool ResonanceBlobPipeline::init() {
                                     ncs2.c_str(), "resonance_ncs2");
     glow_prog_ = gl_compile_program(resonance_shaders::kFullscreenVs,
                                     glow.c_str(), "resonance_glow");
-    if (!ncs1_prog_ || !ncs2_prog_ || !glow_prog_) {
+    present_prog_ =
+        gl_compile_program(resonance_shaders::kPresentVs,
+                           resonance_shaders::kPresentFs, "resonance_present");
+    if (!ncs1_prog_ || !ncs2_prog_ || !glow_prog_ || !present_prog_) {
         klog("resonance_blob: shader compile failed");
         return false;
     }
@@ -58,7 +61,7 @@ bool ResonanceBlobPipeline::init() {
 }
 
 void ResonanceBlobPipeline::destroy() {
-    GLuint progs[] = {ncs1_prog_, ncs2_prog_, glow_prog_};
+    GLuint progs[] = {ncs1_prog_, ncs2_prog_, glow_prog_, present_prog_};
     for (GLuint p : progs)
         if (p)
             glDeleteProgram(p);
@@ -254,28 +257,39 @@ void ResonanceBlobPipeline::render(int width, int height, int tick, float fade,
     set_audio_uniforms(glow_prog_, audio_l_tex, audio_r_tex, audio_size, tick,
                        canvas, params);
     glUniform1f(glGetUniformLocation(glow_prog_, "u_fade"), fade);
-    glUniform4f(glGetUniformLocation(glow_prog_, "u_backdrop"),
-                palette::window_backdrop.r, palette::window_backdrop.g,
-                palette::window_backdrop.b, palette::window_backdrop.a);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, fbo_tex_[1]);
     glUniform1i(glGetUniformLocation(glow_prog_, "tex"), 0);
     draw_quad();
     mark("glow");
 
-    int off_x = (width - canvas) / 2;
-    int off_y = (height - canvas) / 2;
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    glViewport(0, 0, width, height);
-    glClearColor(palette::window_backdrop.r, palette::window_backdrop.g,
-                 palette::window_backdrop.b, palette::window_backdrop.a);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, glow_fbo_);
-    glBlitFramebuffer(0, 0, canvas, canvas, off_x, off_y, off_x + canvas,
-                      off_y + canvas, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+    present(width, height, canvas, fade);
+    mark("present");
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
     glUseProgram(0);
+    glDisable(GL_BLEND);
+}
+
+void ResonanceBlobPipeline::present(int width, int height, int canvas,
+                                    float fade) {
+    int off_x = (width - canvas) / 2;
+    int off_y = (height - canvas) / 2;
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, width, height);
+    glClearColor(palette::window_backdrop.r, palette::window_backdrop.g,
+                 palette::window_backdrop.b, palette::window_backdrop.a * fade);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glViewport(off_x, off_y, canvas, canvas);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    glUseProgram(present_prog_);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, glow_tex_);
+    glUniform1i(glGetUniformLocation(present_prog_, "tex"), 0);
+    draw_quad();
     glDisable(GL_BLEND);
 }
