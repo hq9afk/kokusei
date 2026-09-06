@@ -261,6 +261,10 @@ Config load_config() {
         cfg.resonance.glow_quality = std::clamp(
             resonance.value("glowQuality", cfg.resonance.glow_quality),
             kResonanceGlowQualityMin, kResonanceGlowQualityMax);
+        cfg.resonance.visualizer_shape =
+            resonance.value("visualizerShape", std::string("bar")) == "sphere"
+                ? ResonanceVisualizerShape::Sphere
+                : ResonanceVisualizerShape::Bar;
     } catch (const nlohmann::json::exception &) {
     }
     return cfg;
@@ -337,6 +341,10 @@ void save_config(const Config &cfg) {
     resonance["fractalComplexity"] = cfg.resonance.fractal_complexity;
     resonance["glowDirections"] = cfg.resonance.glow_directions;
     resonance["glowQuality"] = cfg.resonance.glow_quality;
+    resonance["visualizerShape"] =
+        cfg.resonance.visualizer_shape == ResonanceVisualizerShape::Sphere
+            ? "sphere"
+            : "bar";
 
     nlohmann::json j;
     j["qixing"] = {{"autohideEnabled", cfg.autohide}};

@@ -109,6 +109,42 @@ void resonance_tab_paint(TrullaState &state, Node *root, int32_t scale, float x,
                          float y, float w, const Config &cfg) {
     const ResonanceParams &p = cfg.resonance;
 
+    {
+        static const char *kShapeLabels[2] = {"Bar", "Sphere"};
+        static const char *kShapeTags[2] = {"resonanceshapebar",
+                                            "resonanceshapesphere"};
+        bool active_flags[2] = {
+            p.visualizer_shape == ResonanceVisualizerShape::Bar,
+            p.visualizer_shape == ResonanceVisualizerShape::Sphere};
+
+        float tile_w = (w - kTrullaScreenSelectorSpacing) / 2.0f;
+        float cx = x;
+        for (int i = 0; i < 2; ++i) {
+            bool active = active_flags[i];
+            node_add_rrect(root, cx, y, tile_w, kTrullaScreenSelectorHeight,
+                           kTrullaTileRadius, kTrullaSelectorBorderWidth,
+                           rgba(palette::lavender_alpha20),
+                           active ? rgba(palette::accent_alt) : kPanelNoBorder);
+            const Texture *tex =
+                cached_text(state.tcache, kShapeLabels[i], scale);
+            if (tex)
+                node_add_texture(
+                    root, cx + (tile_w - tex->width) / 2.0f,
+                    y + (kTrullaScreenSelectorHeight - tex->height) / 2.0f,
+                    *tex, rgba(palette::text));
+            state.click_regions.push_back(
+                {PanelClickKind::ToggleFlip,
+                 {cx, y, tile_w, kTrullaScreenSelectorHeight},
+                 kShapeTags[i]});
+            cx += tile_w + kTrullaScreenSelectorSpacing;
+        }
+
+        y += kTrullaScreenSelectorHeight + kPanelRowGap;
+    }
+
+    if (p.visualizer_shape != ResonanceVisualizerShape::Sphere)
+        return;
+
     for (const KnobRow &knob : kKnobs) {
         float h = kTrullaToggleTileHeight;
         node_add_rrect(
@@ -188,6 +224,22 @@ bool resonance_tab_handle_click(TrullaState &state, const Config &cfg,
                                 const PanelClickRegion &region) {
     if (region.kind != PanelClickKind::ToggleFlip)
         return false;
+
+    if (region.tag == "resonanceshapesphere" ||
+        region.tag == "resonanceshapebar") {
+        ResonanceVisualizerShape shape = region.tag == "resonanceshapesphere"
+                                             ? ResonanceVisualizerShape::Sphere
+                                             : ResonanceVisualizerShape::Bar;
+        if (cfg.resonance.visualizer_shape != shape) {
+            trulla_commit_focused_field(state, cfg, on_commit);
+            Config updated = cfg;
+            updated.resonance.visualizer_shape = shape;
+            on_commit(updated);
+            trulla_request_frame(state);
+        }
+        return true;
+    }
+
     for (const KnobRow &knob : kKnobs) {
         if (region.tag != knob.reset_tag)
             continue;

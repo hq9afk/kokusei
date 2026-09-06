@@ -4,6 +4,15 @@
 constexpr float kResonanceCanvasFraction = 0.8f;
 constexpr int kResonanceCanvasMin = 200;
 
+// bar visualizer
+constexpr float kResonanceBarWidth = 10.0f;
+constexpr float kResonanceBarSpacing = 7.0f;
+constexpr float kResonanceBarRadius = 3.0f;
+constexpr float kResonanceBarHeightRatio = 0.7f;
+constexpr float kResonanceBarOpacity = 0.6f;
+constexpr float kResonanceBarMinHeight = 5.0f;
+constexpr int kResonanceBarFps = 60;
+
 // default window size
 constexpr int kResonanceDefaultWindow = 1000;
 
@@ -40,7 +49,10 @@ constexpr float kResonanceGlowDirectionsMax = 32.0f;
 constexpr float kResonanceGlowQualityMin = 2.0f;
 constexpr float kResonanceGlowQualityMax = 8.0f;
 
+enum class ResonanceVisualizerShape { Bar, Sphere };
+
 struct ResonanceParams {
+    ResonanceVisualizerShape visualizer_shape = ResonanceVisualizerShape::Bar;
     int fps = kResonanceFps;
     float particle_thin = 0.12f;
     int particle_size = 4;

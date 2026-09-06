@@ -4,7 +4,7 @@
 
 #include "config/resonance_config.h"
 
-class ResonanceBlobPipeline {
+class SphereResonance {
   public:
     bool init();
     void destroy();

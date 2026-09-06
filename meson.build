@@ -234,7 +234,8 @@ kokusei_overlay_main_only_sources = [
   'src/modules/resonance.cpp',
   'src/modules/resonance/audio_capture.cpp',
   'src/modules/resonance/audio_stages.cpp',
-  'src/modules/resonance/blob_pipeline.cpp',
+  'src/modules/resonance/bar_resonance.cpp',
+  'src/modules/resonance/sphere_resonance.cpp',
 ]
 
 kokusei_resonance_test_sources = [

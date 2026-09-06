@@ -301,8 +301,8 @@ using panel_chrome_detail::cached_text;
 namespace {
 
 float draw_profile_block(TrullaState &state, Node *parent, int32_t scale,
-                         float x, float y, float w) {
-    float avatar_x = x;
+                         float x, float y, float w, bool expanded) {
+    float avatar_x = x + (w - kTrullaProfileAvatarSize) / 2.0f;
     float avatar_y = y + kTrullaProfileTopPadding;
     animated_image_draw(state.profile_pic, parent, avatar_x, avatar_y,
                         kTrullaProfileAvatarSize, kTrullaProfileAvatarSize,
@@ -320,26 +320,29 @@ float draw_profile_block(TrullaState &state, Node *parent, int32_t scale,
                 *avatar_icon, rgba(palette::text));
     }
 
-    float text_x =
-        avatar_x + kTrullaProfileAvatarSize + kTrullaProfileAvatarLabelGap;
-    const Texture *name_tex =
-        cached_text(state.tcache, user_info::username(), scale);
-    const Texture *uptime_tex =
-        cached_text(state.tcache, user_info::uptime_string(), scale);
-    float info_h = (name_tex ? name_tex->height : 0) + kTrullaProfileLineGap +
-                   (uptime_tex ? uptime_tex->height : 0);
-    float text_y = avatar_y + (kTrullaProfileAvatarSize - info_h) / 2.0f;
-    if (name_tex) {
-        node_add_texture(parent, text_x, text_y, *name_tex,
-                         rgba(palette::text));
-        text_y += name_tex->height + kTrullaProfileLineGap;
-    }
-    if (uptime_tex)
-        node_add_texture(parent, text_x, text_y, *uptime_tex,
-                         rgba(palette::text_dim));
+    float block_h = kTrullaProfileTopPadding + kTrullaProfileAvatarSize;
 
-    float block_h = kTrullaProfileTopPadding + kTrullaProfileAvatarSize +
-                    kTrullaProfileBottomPadding;
+    if (expanded) {
+        const Texture *name_tex =
+            cached_text(state.tcache, user_info::username(), scale);
+        const Texture *uptime_tex =
+            cached_text(state.tcache, user_info::uptime_string(), scale);
+        float info_y =
+            avatar_y + kTrullaProfileAvatarSize + kTrullaProfileAvatarLabelGap;
+        if (name_tex) {
+            node_add_texture(parent, x + (w - name_tex->width) / 2.0f, info_y,
+                             *name_tex, rgba(palette::text));
+            info_y += name_tex->height + kTrullaProfileLineGap;
+        }
+        if (uptime_tex) {
+            node_add_texture(parent, x + (w - uptime_tex->width) / 2.0f, info_y,
+                             *uptime_tex, rgba(palette::text_dim));
+            info_y += uptime_tex->height;
+        }
+        block_h = info_y - y;
+    }
+
+    block_h += kTrullaProfileBottomPadding;
     node_add_rect(parent, x, y + block_h, w, 1.0f, rgba(palette::text_alpha11));
     return block_h + kTrullaProfileDividerGap;
 }
@@ -504,8 +507,8 @@ void trulla_paint(TrullaState &state, const Config &cfg,
                                          : kTrullaNavRailCollapsedWidth;
 
         float rail_x = panel_x + kPanelPadding;
-        float profile_h = draw_profile_block(state, root, scale, rail_x,
-                                             content_y, rail_width);
+        float profile_h = draw_profile_block(
+            state, root, scale, rail_x, content_y, rail_width, rail_expanded);
         float rail_y = content_y + profile_h;
         float rail_h = panel_y + panel_h - kPanelPadding - rail_y;
         draw_nav_rail(state, root, scale, rail_x, rail_y, rail_width, rail_h,

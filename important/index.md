@@ -39,7 +39,7 @@
 - `stiletto_config.h`: Stiletto-rain window size, glyph/cell/timing constants.
 - `blink_config.h`: Blink recent-activity pulse and blink-overlay fade, logo-speed, and layer-namespace constants.
 - `penance_config.h`: Penance-screen card ratio, three-column and side-panel geometry, fetch/media/resources/notification-dock constants, dot/input/avatar sizes, entrance/exit animation timings, and per-property animation owner ids.
-- `resonance_config.h`: Audio resonance surface-derived square render canvas (`0.75 * min(w,h)`), `11 kHz` stereo capture, CPU FFT, GLava GPU-transform constants, plus `ResonanceParams` runtime knobs (fps, particle thin/size, fractal complexity, glow directions/quality) and their clamp ranges (the shared `0.7` black backdrop moved to `render/palette.h`'s `window_backdrop`).
+- `resonance_config.h`: Audio resonance surface-derived square render canvas (`0.75 * min(w,h)`), `11 kHz` stereo capture, CPU FFT, GLava GPU-transform constants, bar-visualizer geometry (`kResonanceBar*`), plus `ResonanceParams` runtime knobs (`visualizer_shape` (`ResonanceVisualizerShape` `Bar`/`Sphere`, default `Bar`), fps, particle thin/size, fractal complexity, glow directions/quality) and their clamp ranges (the shared `0.7` black backdrop moved to `render/palette.h`'s `window_backdrop`).
 
 ## src/render
 
@@ -119,7 +119,7 @@
 - `blink.h`+`.cpp`: Recent-activity blink clock feeding the per-monitor ambient/screensaver overlay surface; screensaver bounces an `AnimatedImage` logo, freed while not shown.
 - `trulla.h`+`.cpp`: Trulla panel core, hosts per-tab modules, responsive nav rail, owns shared toggle-row widgets and `draw_profile_block`.
 - `stiletto.h`+`.cpp`: Stiletto-rain overlay, a real `xdg_toplevel` window, rebuilds the grid on live resize.
-- `resonance.h`+`.cpp`: Audio resonance overlay window; ported `ncs`/WayVes Perlin-noise blob (tinted to `accent` over a `0.7` black backdrop) plus `glow` post pass, fed by own `11 kHz` stereo PipeWire capture, CPU FFT, and a GLava GPU transform chain; dedicated render thread and share-context `EGLContext`; render thread self-paces to `ResonanceParams::fps` and reads live knobs via `resonance_apply_params` (`Module::apply_config`).
+- `resonance.h`+`.cpp`: Audio resonance overlay window; render thread runs either `SphereResonance` (ported `ncs`/WayVes Perlin-noise blob, `accent`-tinted over a `0.7` black backdrop, plus `glow` post) or `BarResonance` (log-frequency bars), selected by `ResonanceParams::visualizer_shape`; fed by own `11 kHz` stereo PipeWire capture, CPU FFT, and a GLava GPU transform chain; dedicated render thread and share-context `EGLContext`; render thread self-paces to `ResonanceParams::fps` for the sphere and a fixed `kResonanceBarFps` for the bars, and reads live knobs via `resonance_apply_params` (`Module::apply_config`).
 - `penance.h`+`.cpp`: `ext-session-lock-v1` session lock; one lock surface per `wl_output`, `PAM` auth on a worker thread, `caelestia`-style fixed-ratio card with a three-column layout (battery/fetch/media, center clock+date+avatar+pill, resources/notifications) drawn from `mpris`/`system_stats`/`cpu_temp`/`gpu_temp`/`upower`/`notification_service`, entrance/exit spin-expand choreography.
 
 ## src/modules/starward
@@ -131,8 +131,9 @@
 - `fft.h`+`.cpp`: Radix-2 DIT FFT (`GLava`-derived, GPL-3.0), Hann window plus `log`/`fftScale`/`fftCutOff` magnitude tilt; `EGL`-free, linked into the test binary.
 - `audio_capture.h`+`.cpp`: Own `pw_thread_loop` `11 kHz` stereo sink capture; `ncs` ring/fragment bookkeeping into `4096`-sample L/R buffers, `take()` snapshot under a mutex.
 - `audio_stages.h`+`.cpp`: Render-thread GLava GPU transform chain (`pass` peak-hold + `gravity` decay -> 5-frame ring -> Hann `average` -> frequency-domain `smooth`) over `Nx1` `GL_R16` textures, for L and R.
-- `blob_pipeline.h`+`.cpp`: Render-thread `ncs-1` (atomic-image particle accumulation) -> `ncs-2` (blob resolve) -> `glow` post, at a square canvas of `resonance_canvas_size(surfaceW, surfaceH)` rebuilt (atomic texture + three `RGBA8` FBOs) whenever the surface size changes, with `glMemoryBarrier` between stages, `u_fade`/`u_accent` plus the `ResonanceParams` knob uniforms (`particleThin`/`u_particleSize`/`u_complexity`/`u_glowDirections`/`u_glowQuality`), a full-window `glClear` to `window_backdrop` (alpha `* fade`), and a centered premultiplied textured-quad present of the canvas over that backdrop.
-- `resonance_shaders.h`: The eight flattened `ncs` shader stages as string fragments (includes inlined, `#expand` hand-expanded), assembled at runtime.
+- `sphere_resonance.h`+`.cpp`: `SphereResonance`, render-thread `ncs-1` (atomic-image particle accumulation) -> `ncs-2` (blob resolve) -> `glow` post, at a square canvas of `resonance_canvas_size(surfaceW, surfaceH)` rebuilt (atomic texture + three `RGBA8` FBOs) whenever the surface size changes, with `glMemoryBarrier` between stages, `u_fade`/`u_accent` plus the `ResonanceParams` knob uniforms (`particleThin`/`u_particleSize`/`u_complexity`/`u_glowDirections`/`u_glowQuality`), a full-window `glClear` to `window_backdrop` (alpha `* fade`), and a centered premultiplied textured-quad present of the canvas over that backdrop.
+- `bar_resonance.h`+`.cpp`: `BarResonance`, render-thread single-pass `kBarFs` fragment shader (`gl_FragCoord`-based, scissored to the bar band) sampling the `audio_stages` `smooth_l`/`smooth_r` textures; accent-tinted bottom-anchored rounded bars, count derived from window width, `kResonanceBarMinHeight` floor when silent, over the same `window_backdrop` clear.
+- `resonance_shaders.h`: The eight flattened `ncs` shader stages plus the `kBarFs` bar shader as string fragments (includes inlined, `#expand` hand-expanded), assembled at runtime.
 
 ## src/modules/penance
 
@@ -155,7 +156,7 @@
 - `displays_tab.h`+`.cpp`: Per-tab trulla UI and commit logic.
 - `blink_tab.h`+`.cpp`: Per-tab trulla UI and commit logic.
 - `starward_tab.h`+`.cpp`: Per-tab trulla UI and commit logic (central-logo static/animated toggle).
-- `resonance_tab.h`+`.cpp`: Per-tab trulla UI and commit logic; number-field row per `ResonanceParams` knob with per-row reset.
+- `resonance_tab.h`+`.cpp`: Per-tab trulla UI and commit logic; `Bar`/`Sphere` visualizer-shape selector row, then a number-field row per `ResonanceParams` knob with per-row reset shown only when `Sphere` is selected.
 
 ## src/modules/qixing
 

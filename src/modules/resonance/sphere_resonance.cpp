@@ -5,8 +5,8 @@
 
 #include "core/log.h"
 
-#include "modules/resonance/blob_pipeline.h"
 #include "modules/resonance/resonance_shaders.h"
+#include "modules/resonance/sphere_resonance.h"
 
 #include "render/gl.h"
 #include "render/palette.h"
@@ -25,7 +25,7 @@ int resonance_canvas_size(int width, int height) {
 
 } // namespace
 
-bool ResonanceBlobPipeline::init() {
+bool SphereResonance::init() {
     if (ready_)
         return true;
 
@@ -43,7 +43,7 @@ bool ResonanceBlobPipeline::init() {
         gl_compile_program(resonance_shaders::kPresentVs,
                            resonance_shaders::kPresentFs, "resonance_present");
     if (!ncs1_prog_ || !ncs2_prog_ || !glow_prog_ || !present_prog_) {
-        klog("resonance_blob: shader compile failed");
+        klog("resonance_sphere: shader compile failed");
         return false;
     }
 
@@ -60,7 +60,7 @@ bool ResonanceBlobPipeline::init() {
     return true;
 }
 
-void ResonanceBlobPipeline::destroy() {
+void SphereResonance::destroy() {
     GLuint progs[] = {ncs1_prog_, ncs2_prog_, glow_prog_, present_prog_};
     for (GLuint p : progs)
         if (p)
@@ -83,10 +83,10 @@ void ResonanceBlobPipeline::destroy() {
         glDeleteBuffers(1, &vbo_);
     if (vao_)
         glDeleteVertexArrays(1, &vao_);
-    *this = ResonanceBlobPipeline{};
+    *this = SphereResonance{};
 }
 
-void ResonanceBlobPipeline::ensure_targets(int canvas) {
+void SphereResonance::ensure_targets(int canvas) {
     if (atomic_tex_ && canvas == canvas_)
         return;
 
@@ -147,7 +147,7 @@ void ResonanceBlobPipeline::ensure_targets(int canvas) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void ResonanceBlobPipeline::draw_quad() {
+void SphereResonance::draw_quad() {
     glBindVertexArray(vao_);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
@@ -157,11 +157,10 @@ void ResonanceBlobPipeline::draw_quad() {
     glBindVertexArray(0);
 }
 
-void ResonanceBlobPipeline::set_audio_uniforms(GLuint prog, GLuint audio_l_tex,
-                                               GLuint audio_r_tex,
-                                               int audio_size, int tick,
-                                               int canvas,
-                                               const ResonanceParams &params) {
+void SphereResonance::set_audio_uniforms(GLuint prog, GLuint audio_l_tex,
+                                         GLuint audio_r_tex, int audio_size,
+                                         int tick, int canvas,
+                                         const ResonanceParams &params) {
     glUniform2f(glGetUniformLocation(prog, "resolution"),
                 static_cast<float>(canvas), static_cast<float>(canvas));
     glUniform1f(glGetUniformLocation(prog, "time"), static_cast<float>(tick));
@@ -191,10 +190,9 @@ void ResonanceBlobPipeline::set_audio_uniforms(GLuint prog, GLuint audio_l_tex,
     glActiveTexture(GL_TEXTURE0);
 }
 
-void ResonanceBlobPipeline::render(int width, int height, int tick, float fade,
-                                   GLuint audio_l_tex, GLuint audio_r_tex,
-                                   int audio_size,
-                                   const ResonanceParams &params) {
+void SphereResonance::render(int width, int height, int tick, float fade,
+                             GLuint audio_l_tex, GLuint audio_r_tex,
+                             int audio_size, const ResonanceParams &params) {
     if (!ready_ || width <= 0 || height <= 0)
         return;
 
@@ -209,7 +207,7 @@ void ResonanceBlobPipeline::render(int width, int height, int tick, float fade,
             return;
         auto t0 = std::chrono::steady_clock::now();
         glFinish();
-        klog("resonance_blob: f%d %s %.1fms", tick, tag,
+        klog("resonance_sphere: f%d %s %.1fms", tick, tag,
              std::chrono::duration<float, std::milli>(
                  std::chrono::steady_clock::now() - t0)
                  .count());
@@ -272,8 +270,7 @@ void ResonanceBlobPipeline::render(int width, int height, int tick, float fade,
     glDisable(GL_BLEND);
 }
 
-void ResonanceBlobPipeline::present(int width, int height, int canvas,
-                                    float fade) {
+void SphereResonance::present(int width, int height, int canvas, float fade) {
     int off_x = (width - canvas) / 2;
     int off_y = (height - canvas) / 2;
 

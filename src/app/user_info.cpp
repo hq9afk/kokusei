@@ -3,6 +3,7 @@
 #include <sys/sysinfo.h>
 #include <unistd.h>
 
+#include <cstdio>
 #include <fstream>
 
 #include "app/user_info.h"
@@ -46,14 +47,9 @@ std::string uptime_string() {
         return "";
     long hours = info.uptime / 3600;
     long minutes = (info.uptime % 3600) / 60;
-    auto plural = [](long n, const char *unit) {
-        return std::to_string(n) + " " + unit + (n == 1 ? "" : "s");
-    };
-    if (hours == 0)
-        return plural(minutes, "minute");
-    if (minutes == 0)
-        return plural(hours, "hour");
-    return plural(hours, "hour") + ", " + plural(minutes, "minute");
+    char buf[32];
+    std::snprintf(buf, sizeof(buf), "Up: %02ld:%02ld", hours, minutes);
+    return buf;
 }
 
 std::string profile_media_path() {

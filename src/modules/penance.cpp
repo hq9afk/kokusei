@@ -438,7 +438,7 @@ void draw_fetch(PenanceState &st, Node *content, const PenanceRect &col,
     std::vector<std::string> lines;
     lines.push_back("OS  : " + user_info::os_pretty_name());
     lines.push_back("WM  : " + wm_name(st.app));
-    lines.push_back("UP  : " + user_info::uptime_string());
+    lines.push_back(user_info::uptime_string());
 
     const Texture *label_t = tc_text(st, st.user, fpx, true, scale);
     const Texture *prompt_t = tc_text(st, ">", fpx, true, scale);

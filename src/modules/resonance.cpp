@@ -11,8 +11,9 @@
 
 #include "modules/resonance.h"
 #include "modules/resonance/audio_stages.h"
-#include "modules/resonance/blob_pipeline.h"
+#include "modules/resonance/bar_resonance.h"
 #include "modules/resonance/fft.h"
+#include "modules/resonance/sphere_resonance.h"
 
 #include "render/gl.h"
 #include "render/overlay_panel.h"
@@ -42,10 +43,15 @@ void render_thread_main(ResonanceState *state) {
          state->base.height, state->base.output_scale.scale);
 
     auto stages = std::make_unique<ResonanceAudioStages>();
-    auto blob = std::make_unique<ResonanceBlobPipeline>();
-    bool init_ok = stages->init() && blob->init();
-    klog("resonance: pipeline init %s",
-         init_ok ? "ok" : "FAILED, showing cleared window");
+    auto sphere = std::make_unique<SphereResonance>();
+    auto bar = std::make_unique<BarResonance>();
+    bool stages_ok = stages->init();
+    bool sphere_ok = false;
+    bool bar_ok = false;
+    bool sphere_tried = false;
+    bool bar_tried = false;
+    klog("resonance: audio stages init %s",
+         stages_ok ? "ok" : "FAILED, showing cleared window");
 
     std::vector<float> audio_l;
     std::vector<float> audio_r;
@@ -57,7 +63,7 @@ void render_thread_main(ResonanceState *state) {
     bool first_frame_done = false;
     auto last_heartbeat = std::chrono::steady_clock::now();
     int heartbeat_frames = 0;
-    float heartbeat_blob_ms = 0.0f;
+    float heartbeat_draw_ms = 0.0f;
 
     auto next = std::chrono::steady_clock::now();
 
@@ -71,7 +77,10 @@ void render_thread_main(ResonanceState *state) {
             params = ts.params;
         }
         auto now = std::chrono::steady_clock::now();
-        int fps = std::clamp(params.fps, kResonanceFpsMin, kResonanceFpsMax);
+        bool want_sphere =
+            params.visualizer_shape == ResonanceVisualizerShape::Sphere;
+        int fps = std::clamp(want_sphere ? params.fps : kResonanceBarFps,
+                             kResonanceFpsMin, kResonanceFpsMax);
         next += std::chrono::nanoseconds(1'000'000'000 / fps);
         if (next < now)
             next = now;
@@ -89,7 +98,17 @@ void render_thread_main(ResonanceState *state) {
         int width = state->base.width;
         int height = state->base.height;
 
-        if (!init_ok) {
+        if (want_sphere && !sphere_tried) {
+            sphere_tried = true;
+            sphere_ok = sphere->init();
+            klog("resonance: sphere renderer init %s",
+                 sphere_ok ? "ok" : "FAILED");
+        } else if (!want_sphere && !bar_tried) {
+            bar_tried = true;
+            bar_ok = bar->init();
+            klog("resonance: bar renderer init %s", bar_ok ? "ok" : "FAILED");
+        }
+        if (!stages_ok || (want_sphere ? !sphere_ok : !bar_ok)) {
             clear_backbuffer(*state, width, height);
             continue;
         }
@@ -119,7 +138,12 @@ void render_thread_main(ResonanceState *state) {
 
         GLuint al = stages->ready() ? stages->smooth_l() : 0;
         GLuint ar = stages->ready() ? stages->smooth_r() : 0;
-        blob->render(width, height, tick, fade, al, ar, stages->size(), params);
+        if (want_sphere)
+            sphere->render(width, height, tick, fade, al, ar, stages->size(),
+                           params);
+        else
+            bar->render(width, height, tick, fade, al, ar, stages->size(),
+                        params);
         glFinish();
         auto t2 = std::chrono::steady_clock::now();
 
@@ -139,7 +163,7 @@ void render_thread_main(ResonanceState *state) {
 
         if (trace) {
             gl_check("resonance render");
-            klog("resonance: frame %d stages=%.1fms blob=%.1fms swap=%.1fms",
+            klog("resonance: frame %d stages=%.1fms draw=%.1fms swap=%.1fms",
                  tick,
                  std::chrono::duration<float, std::milli>(t1 - t0).count(),
                  std::chrono::duration<float, std::milli>(t2 - t1).count(),
@@ -148,25 +172,27 @@ void render_thread_main(ResonanceState *state) {
         }
 
         ++heartbeat_frames;
-        if (render_ms > heartbeat_blob_ms)
-            heartbeat_blob_ms = render_ms;
+        if (render_ms > heartbeat_draw_ms)
+            heartbeat_draw_ms = render_ms;
         if (t3 - last_heartbeat >= std::chrono::seconds(1)) {
             klog("resonance: heartbeat tick=%d frames=%d fps=%.1f "
                  "worst=%.1fms fade=%.2f %dx%d",
                  tick, heartbeat_frames,
                  static_cast<float>(heartbeat_frames) /
                      std::chrono::duration<float>(t3 - last_heartbeat).count(),
-                 heartbeat_blob_ms, fade, width, height);
+                 heartbeat_draw_ms, fade, width, height);
             last_heartbeat = t3;
             heartbeat_frames = 0;
-            heartbeat_blob_ms = 0.0f;
+            heartbeat_draw_ms = 0.0f;
         }
     }
 
     stages->destroy();
-    blob->destroy();
+    sphere->destroy();
+    bar->destroy();
     stages.reset();
-    blob.reset();
+    sphere.reset();
+    bar.reset();
     gl_make_current(state->base.egl_display, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 }
 

@@ -5,7 +5,8 @@
 - No comments across the code base
 - Exceptions:
   - Namespace comment,
-  - Config comments to group constants together. 
+  - Config comments to group constants together,
+  - License/attribution notices for third-party code
 
 ## Formatting the shell
 
