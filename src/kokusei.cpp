@@ -50,14 +50,15 @@ int main(int argc, char **argv) {
 
     bool want_daemonize = argc == 1;
     bool want_debug = argc > 1 && strcmp(argv[1], "debug") == 0;
-    if (argc > 1 && !want_daemonize && !want_debug)
+    bool want_penance = argc > 1 && strcmp(argv[1], "start-penance") == 0;
+    if (argc > 1 && !want_daemonize && !want_debug && !want_penance)
         return run_ipc_client(argc, argv);
 
     if (!single_instance_try_acquire()) {
         fprintf(stderr, "kokusei: already running\n");
         return 1;
     }
-    if (want_daemonize)
+    if (want_daemonize || want_penance)
         daemonize();
 
     WaylandState app;
@@ -140,6 +141,9 @@ int main(int argc, char **argv) {
     for (auto &s : app.services)
         if (!s->init(app))
             klog("%s: init failed", s->name());
+
+    if (want_penance)
+        penance_start(app);
 
     int ipc_fd = open_ipc_socket();
 

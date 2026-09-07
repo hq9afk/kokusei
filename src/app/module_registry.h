@@ -106,3 +106,4 @@ void penance_notify_output_added(WaylandState &app, wl_output *output,
                                  const char *name);
 void penance_notify_output_removed(WaylandState &app, wl_output *output);
 bool penance_is_locked(WaylandState &app);
+void penance_start(WaylandState &app);

@@ -992,6 +992,11 @@ bool penance_is_locked(WaylandState &app) {
     return lm && lm->state().locked;
 }
 
+void penance_start(WaylandState &app) {
+    if (auto *lm = find_penance_module(app))
+        penance_request(lm->state(), app);
+}
+
 std::vector<std::unique_ptr<PerMonitorModule>> build_per_monitor_modules() {
     std::vector<std::unique_ptr<PerMonitorModule>> modules;
     modules.push_back(std::make_unique<QixingPerMonitorModule>());

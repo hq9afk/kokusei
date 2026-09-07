@@ -17,7 +17,7 @@
 - `monitor_output.h`+`.cpp`: `MonitorOutput` per-output state, monitor create/activate/destroy lifecycle, config-apply orchestration, trulla retarget.
 - `module.h`: `Module` interface, the per-surface overlay boundary; default no-op virtuals, unnamed params; `apply_config` hook fired for every overlay on a config change.
 - `per_monitor_module.h`: `PerMonitorModule` interface, the per-surface per-monitor boundary; default no-op virtuals, unnamed params.
-- `module_registry.h`+`.cpp`: `build_app_modules`/`build_per_monitor_modules` composition root, one subclass per overlay/per-monitor surface; also the `penance_notify_output_*`/`penance_is_locked` bridge so `app/` code reaches the penance module without a module include.
+- `module_registry.h`+`.cpp`: `build_app_modules`/`build_per_monitor_modules` composition root, one subclass per overlay/per-monitor surface; also the `penance_notify_output_*`/`penance_is_locked`/`penance_start` bridge so `app/` code reaches the penance module without a module include.
 - `wayland_registry.h`+`.cpp`: Wayland global registry bind/listener wiring, populates `WaylandState`'s globals; notifies the penance module of output hotplug.
 - `wayland_state.h`: `WaylandState`, shared Wayland globals and every process-wide service's owned state; forward-declares `MonitorOutput`.
 - `service.h`: `Service` interface, the process-wide boundary for cross-cutting services: `init`/`timer_tick`/`poll_sources`.
@@ -181,7 +181,7 @@
 
 ## src
 
-- `kokusei.cpp`: Orchestration, Wayland/EGL bootstrap, poll loop, CLI entry point, daemonize/debug/IPC-client dispatch.
+- `kokusei.cpp`: Orchestration, Wayland/EGL bootstrap, poll loop, CLI entry point, daemonize/debug/`start-penance`/IPC-client dispatch.
 
 ## test
 
