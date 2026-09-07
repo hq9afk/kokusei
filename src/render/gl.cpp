@@ -1,6 +1,39 @@
+#include <fstream>
+#include <sstream>
+
 #include "core/log.h"
 
 #include "render/gl.h"
+
+#ifndef KOKUSEI_SHADER_DIR
+#define KOKUSEI_SHADER_DIR ""
+#endif
+
+std::string gl_load_shader(const char *rel) {
+    const std::string candidates[] = {
+        std::string(KOKUSEI_SHADER_DIR) + "/" + rel,
+        std::string("assets/shaders/") + rel,
+    };
+    for (const std::string &path : candidates) {
+        std::ifstream f(path, std::ios::binary);
+        if (!f)
+            continue;
+        std::ostringstream ss;
+        ss << f.rdbuf();
+        return ss.str();
+    }
+    klog("shader: cannot read %s", rel);
+    return {};
+}
+
+GLuint gl_compile_program_files(const char *vs_rel, const char *fs_rel,
+                                const char *label) {
+    std::string vs = gl_load_shader(vs_rel);
+    std::string fs = gl_load_shader(fs_rel);
+    if (vs.empty() || fs.empty())
+        return 0;
+    return gl_compile_program(vs.c_str(), fs.c_str(), label);
+}
 
 GLuint gl_compile_program(const char *vs_src, const char *fs_src,
                           const char *label) {

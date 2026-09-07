@@ -29,20 +29,21 @@ bool SphereResonance::init() {
     if (ready_)
         return true;
 
-    std::string ncs1 = resonance_shaders::ncs1_fs();
-    std::string ncs2 = resonance_shaders::ncs2_fs();
+    std::string fullscreen_vs = gl_load_shader("resonance/fullscreen.vert");
+    std::string sphere1 = resonance_shaders::sphere1_fs();
+    std::string sphere2 = resonance_shaders::sphere2_fs();
     std::string glow = resonance_shaders::glow_fs();
 
-    ncs1_prog_ = gl_compile_program(resonance_shaders::kFullscreenVs,
-                                    ncs1.c_str(), "resonance_ncs1");
-    ncs2_prog_ = gl_compile_program(resonance_shaders::kFullscreenVs,
-                                    ncs2.c_str(), "resonance_ncs2");
-    glow_prog_ = gl_compile_program(resonance_shaders::kFullscreenVs,
-                                    glow.c_str(), "resonance_glow");
-    present_prog_ =
-        gl_compile_program(resonance_shaders::kPresentVs,
-                           resonance_shaders::kPresentFs, "resonance_present");
-    if (!ncs1_prog_ || !ncs2_prog_ || !glow_prog_ || !present_prog_) {
+    sphere1_prog_ = gl_compile_program(fullscreen_vs.c_str(), sphere1.c_str(),
+                                       "resonance_sphere1");
+    sphere2_prog_ = gl_compile_program(fullscreen_vs.c_str(), sphere2.c_str(),
+                                       "resonance_sphere2");
+    glow_prog_ = gl_compile_program(fullscreen_vs.c_str(), glow.c_str(),
+                                    "resonance_glow");
+    present_prog_ = gl_compile_program_files("resonance/sphere/present.vert",
+                                             "resonance/sphere/present.frag",
+                                             "resonance_present");
+    if (!sphere1_prog_ || !sphere2_prog_ || !glow_prog_ || !present_prog_) {
         klog("resonance_sphere: shader compile failed");
         return false;
     }
@@ -61,7 +62,7 @@ bool SphereResonance::init() {
 }
 
 void SphereResonance::destroy() {
-    GLuint progs[] = {ncs1_prog_, ncs2_prog_, glow_prog_, present_prog_};
+    GLuint progs[] = {sphere1_prog_, sphere2_prog_, glow_prog_, present_prog_};
     for (GLuint p : progs)
         if (p)
             glDeleteProgram(p);
@@ -231,24 +232,24 @@ void SphereResonance::render(int width, int height, int tick, float fade,
     glBindImageTexture(0, atomic_tex_, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
 
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_[0]);
-    glUseProgram(ncs1_prog_);
-    set_audio_uniforms(ncs1_prog_, audio_l_tex, audio_r_tex, audio_size, tick,
-                       canvas, params);
+    glUseProgram(sphere1_prog_);
+    set_audio_uniforms(sphere1_prog_, audio_l_tex, audio_r_tex, audio_size,
+                       tick, canvas, params);
     draw_quad();
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-    mark("ncs1");
+    mark("sphere1");
 
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_[1]);
-    glUseProgram(ncs2_prog_);
-    set_audio_uniforms(ncs2_prog_, audio_l_tex, audio_r_tex, audio_size, tick,
-                       canvas, params);
+    glUseProgram(sphere2_prog_);
+    set_audio_uniforms(sphere2_prog_, audio_l_tex, audio_r_tex, audio_size,
+                       tick, canvas, params);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, fbo_tex_[0]);
-    glUniform1i(glGetUniformLocation(ncs2_prog_, "tex"), 0);
+    glUniform1i(glGetUniformLocation(sphere2_prog_, "tex"), 0);
     draw_quad();
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT |
                     GL_TEXTURE_FETCH_BARRIER_BIT);
-    mark("ncs2");
+    mark("sphere2");
 
     glBindFramebuffer(GL_FRAMEBUFFER, glow_fbo_);
     glUseProgram(glow_prog_);

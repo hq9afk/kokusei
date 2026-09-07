@@ -3,7 +3,6 @@
 #include "core/log.h"
 
 #include "modules/resonance/bar_resonance.h"
-#include "modules/resonance/resonance_shaders.h"
 
 #include "render/gl.h"
 #include "render/palette.h"
@@ -19,8 +18,8 @@ bool BarResonance::init() {
     if (ready_)
         return true;
 
-    prog_ = gl_compile_program(resonance_shaders::kFullscreenVs,
-                               resonance_shaders::kBarFs, "resonance_bar");
+    prog_ = gl_compile_program_files("resonance/fullscreen.vert",
+                                     "resonance/bar/bar.frag", "resonance_bar");
     if (!prog_) {
         klog("resonance_bar: shader compile failed");
         return false;

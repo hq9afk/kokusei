@@ -6,7 +6,6 @@
 #include "core/log.h"
 
 #include "modules/resonance/audio_stages.h"
-#include "modules/resonance/resonance_shaders.h"
 
 #include "render/gl.h"
 
@@ -35,18 +34,18 @@ bool ResonanceAudioStages::init() {
     if (ready_)
         return true;
 
-    pass_prog_ = gl_compile_program(resonance_shaders::kFullscreenVs,
-                                    resonance_shaders::kAudioPassFs,
-                                    "resonance_audio_pass");
-    gravity_prog_ = gl_compile_program(resonance_shaders::kFullscreenVs,
-                                       resonance_shaders::kAudioGravityFs,
-                                       "resonance_audio_gravity");
-    average_prog_ = gl_compile_program(resonance_shaders::kFullscreenVs,
-                                       resonance_shaders::kAudioAverageFs,
-                                       "resonance_audio_average");
-    smooth_prog_ = gl_compile_program(resonance_shaders::kFullscreenVs,
-                                      resonance_shaders::kAudioSmoothFs,
-                                      "resonance_audio_smooth");
+    pass_prog_ = gl_compile_program_files("resonance/fullscreen.vert",
+                                          "resonance/audio_pass.frag",
+                                          "resonance_audio_pass");
+    gravity_prog_ = gl_compile_program_files("resonance/fullscreen.vert",
+                                             "resonance/audio_gravity.frag",
+                                             "resonance_audio_gravity");
+    average_prog_ = gl_compile_program_files("resonance/fullscreen.vert",
+                                             "resonance/audio_average.frag",
+                                             "resonance_audio_average");
+    smooth_prog_ = gl_compile_program_files("resonance/fullscreen.vert",
+                                            "resonance/audio_smooth.frag",
+                                            "resonance_audio_smooth");
     if (!pass_prog_ || !gravity_prog_ || !average_prog_ || !smooth_prog_) {
         klog("resonance_audio_stages: shader compile failed");
         return false;

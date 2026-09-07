@@ -34,7 +34,7 @@ kokusei_inc = include_directories('src')
 
 kokusei_data_dir   = get_option('prefix') / get_option('datadir') / 'kokusei'
 kokusei_font_dir   = kokusei_data_dir / 'fonts'
-kokusei_bullet_dir = kokusei_data_dir / 'bullets'
+kokusei_bullet_dir = kokusei_data_dir / 'constellation'
 
 install_data('assets/fonts/tabler-icons.ttf', install_dir: kokusei_font_dir) # shell-wide icons
 install_data('assets/fonts/YujiMai.ttf', install_dir: kokusei_font_dir)      # starward module
@@ -45,8 +45,9 @@ install_data('assets/gifs/profile.gif', install_dir: kokusei_data_dir / 'gifs') 
 install_data('assets/starward/logo.gif', install_dir: kokusei_data_dir / 'starward') # starward centre logo (animated)
 install_data('assets/starward/logo.png', install_dir: kokusei_data_dir / 'starward') # starward centre logo (static)
 install_data('assets/pam/kokusei', install_dir: kokusei_data_dir / 'pam')    # lock PAM service
+install_subdir('assets/shaders', install_dir: kokusei_data_dir)              # all GLES shader sources
 foreach n : ['1', '2', '3', '4', '5', '6']                                   # keqing constellations
-  install_data('assets/bullets/' + n + '.png', install_dir: kokusei_bullet_dir)
+  install_data('assets/constellation/C' + n + '.png', install_dir: kokusei_bullet_dir)
 endforeach
 
 wayland_scanner = find_program('wayland-scanner')
@@ -236,6 +237,7 @@ kokusei_overlay_main_only_sources = [
   'src/modules/resonance/audio_stages.cpp',
   'src/modules/resonance/bar_resonance.cpp',
   'src/modules/resonance/sphere_resonance.cpp',
+  'src/modules/resonance/resonance_shaders.cpp',
 ]
 
 kokusei_resonance_test_sources = [
@@ -345,6 +347,7 @@ executable(
   ],
   cpp_args: [
     '-DKOKUSEI_FONT_DIR="' + kokusei_font_dir + '"',
+    '-DKOKUSEI_SHADER_DIR="' + kokusei_data_dir / 'shaders' + '"',
     '-DKOKUSEI_DEFAULT_WALLPAPER="' + kokusei_data_dir / 'default.png' + '"',
     '-DKOKUSEI_BULLET_DIR="' + kokusei_bullet_dir + '"',
     '-DKOKUSEI_YUJIMAI_FONT="' + kokusei_font_dir / 'YujiMai.ttf' + '"',

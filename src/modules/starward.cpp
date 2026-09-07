@@ -260,9 +260,10 @@ void start_close_sequence(StarwardState &state) {
     state.burst = 0.0f;
     state.exit_fade = 1.0f;
     state.burst_started = std::chrono::steady_clock::now();
-    update_highlight(state, state.selected_index);
-    update_highlight(state, state.hovered_index);
+    int prev_hovered = state.hovered_index;
     state.hovered_index = -1;
+    set_button_highlight(state, state.selected_index, false);
+    set_button_highlight(state, prev_hovered, false);
     for (int e = 0; e < kStarwardButtonCount; ++e)
         state.slash[static_cast<size_t>(e)] = 0.0f;
 

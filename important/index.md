@@ -57,7 +57,7 @@
 - `panel_chrome.h`+`.cpp`: Shared box/header/confirm chrome, click-kind enum, `panel_region_hit`, `panel_draw_toggle_switch`, `panel_draw_centered_text`, and `panel_measure_row_actions`/`panel_draw_row_actions` (connect/forget pill or busy label) for on-demand panels.
 - `node.h`+`.cpp`: `Node` retained-allocation scene graph with per-frame node pooling; kinds are rect/rounded-rect/texture/rounded-texture/video-texture/group; per-node `rotation`/`scale` about the node centre.
 - `video_texture.h`+`.cpp`: `VideoTexture` RAII `EGLImageKHR`/`GL` handle plus `DrmFrameImport` dma-buf import for zero-copy `VAAPI` playback, and the `EGL_EXT_image_dma_buf_import` cap probe.
-- `gl.h`+`.cpp`: Labelled shader compile/link helper (`gl_compile_program`) and `gl_check` `glGetError` drain, both logging through `klog`.
+- `gl.h`+`.cpp`: Labelled shader compile/link helpers (`gl_compile_program` from source strings, `gl_compile_program_files`/`gl_load_shader` reading `assets/shaders/` with `KOKUSEI_SHADER_DIR`-then-dev-tree fallback) and `gl_check` `glGetError` drain, all logging through `klog`.
 - `overlay_panel.h`+`.cpp`: Shared full-screen on-demand overlay surface, position-lock-on-toggle recipe, and `PanelHeightReveal` live-height roll-down/collapse helper.
 - `toplevel_window.h`+`.cpp`: Shared `xdg_toplevel` real-window surface lifecycle for compositor-managed windows.
 - `popup_window.h`+`.cpp`: Shared `xdg_popup` surface lifecycle parented to a layer surface via `zwlr_layer_surface_v1::get_popup`, with positioner, popup grab, `popup_done`, and reposition-on-resize.
@@ -131,9 +131,9 @@
 - `fft.h`+`.cpp`: Radix-2 DIT FFT (`GLava`-derived, GPL-3.0), Hann window plus `log`/`fftScale`/`fftCutOff` magnitude tilt; `EGL`-free, linked into the test binary.
 - `audio_capture.h`+`.cpp`: Own `pw_thread_loop` `11 kHz` stereo sink capture; `ncs` ring/fragment bookkeeping into `4096`-sample L/R buffers, `take()` snapshot under a mutex.
 - `audio_stages.h`+`.cpp`: Render-thread GLava GPU transform chain (`pass` peak-hold + `gravity` decay -> 5-frame ring -> Hann `average` -> frequency-domain `smooth`) over `Nx1` `GL_R16` textures, for L and R.
-- `sphere_resonance.h`+`.cpp`: `SphereResonance`, render-thread `ncs-1` (atomic-image particle accumulation) -> `ncs-2` (blob resolve) -> `glow` post, at a square canvas of `resonance_canvas_size(surfaceW, surfaceH)` rebuilt (atomic texture + three `RGBA8` FBOs) whenever the surface size changes, with `glMemoryBarrier` between stages, `u_fade`/`u_accent` plus the `ResonanceParams` knob uniforms (`particleThin`/`u_particleSize`/`u_complexity`/`u_glowDirections`/`u_glowQuality`), a full-window `glClear` to `window_backdrop` (alpha `* fade`), and a centered premultiplied textured-quad present of the canvas over that backdrop.
+- `sphere_resonance.h`+`.cpp`: `SphereResonance`, render-thread `sphere-1` (atomic-image particle accumulation) -> `sphere-2` (blob resolve) -> `glow` post, at a square canvas of `resonance_canvas_size(surfaceW, surfaceH)` rebuilt (atomic texture + three `RGBA8` FBOs) whenever the surface size changes, with `glMemoryBarrier` between stages, `u_fade`/`u_accent` plus the `ResonanceParams` knob uniforms (`particleThin`/`u_particleSize`/`u_complexity`/`u_glowDirections`/`u_glowQuality`), a full-window `glClear` to `window_backdrop` (alpha `* fade`), and a centered premultiplied textured-quad present of the canvas over that backdrop.
 - `bar_resonance.h`+`.cpp`: `BarResonance`, render-thread single-pass `kBarFs` fragment shader (`gl_FragCoord`-based, scissored to the bar band) sampling the `audio_stages` `smooth_l`/`smooth_r` textures; accent-tinted bottom-anchored rounded bars, count derived from window width, `kResonanceBarMinHeight` floor when silent, over the same `window_backdrop` clear.
-- `resonance_shaders.h`: The eight flattened `ncs` shader stages plus the `kBarFs` bar shader as string fragments (includes inlined, `#expand` hand-expanded), assembled at runtime.
+- `resonance_shaders.h`+`.cpp`: `sphere1_fs`/`sphere2_fs`/`glow_fs`, concatenating the `assets/shaders/resonance/sphere/*.glsl` fragments (includes inlined, `#expand` hand-expanded, `common.glsl` and the `*_head.glsl` prefixes shared) into the flattened `sphere`/`glow` shader at runtime; every complete `resonance` shader is a file under `assets/shaders/resonance/` (`sphere/` and `bar/` for the shape-specific ones) loaded directly by its consumer.
 
 ## src/modules/penance
 
@@ -178,10 +178,6 @@
 - `widget/yuheng_widget.h`+`.cpp`: One pair per qixing pill.
 - `widget/system_monitor_widget.h`+`.cpp`: One pair per qixing pill (CPU pill opening the system-monitor panel).
 - `widget/tray_widget.h`+`.cpp`: One pair per qixing pill (tray pill opening the tray panel).
-
-## src/shaders
-
-- `renderer_shaders.h`: The shared `Renderer`'s `#version 320 es` shaders (quad vertex; rect/tex/rrect/rounded-tex/video fragment) plus `starward`'s two `thunder` fragment shaders.
 
 ## src
 
@@ -230,7 +226,8 @@
 
 ## assets
 
-- `fonts/*`, `bullets/*`: Installed fonts, overseer bullet icons.
+- `fonts/*`, `constellation/C*.png`: Installed fonts, overseer constellation bullet icons.
+- `shaders/**`: Every `#version 320 es` `GLES` shader the shell compiles - `renderer/` (shared `Renderer` quad `vs` + rect/tex/rrect/rounded-tex/video `fs`), `starward/` (two `thunder` `fs`), `resonance/` (shared `vs`/audio-pass `fs`, `bar/` and `sphere/` for the shape-specific shaders, `sphere/*.glsl` fragments assembled at runtime); installed as a subdir by meson, `NOTICE` records the `lygia`/`GLava` third-party parts.
 - `default.png`: Default expanse wallpaper, the `KOKUSEI_DEFAULT_WALLPAPER` fallback when a column has no configured path.
 - `default_wp.svg`: Blink screensaver bouncing-logo source (placeholder).
 - `electro.png`: Password-field echo glyph, ported from `keqing-shell`'s `Input.qml`, drawn per character.

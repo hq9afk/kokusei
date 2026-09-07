@@ -194,6 +194,7 @@ Drop an entry once newer knowledge fully supersedes it.
 - **A generic "click missed" guard excluding a sibling surface pushes the decision onto it.** That surface's own handler must then know about every overlay stacked above it.
 - **Calling a shared AnimationManager's `tick()` multiple times per instant is safe if absolute-time-based.** It recomputes from wall-clock time, not accumulated delta, so repeats don't double-advance.
 - **A hover-driven highlight must clear on lost surface focus, not just recompute on motion.** Another surface stealing pointer focus mid-hover leaves a stale hovered index otherwise.
+- **A highlight teardown that calls a recompute helper must null the source indices first.** `starward`'s close re-read live `selected_index`/`hovered_index`, so `update_highlight` re-lit the button through the exit.
 - **A mutex must cover the read side of a shared buffer, not just the write side.** Per-channel splitting moved ring-buffer reads outside `ring_mutex_` while the PipeWire thread still wrote under it.
 - **A local sdbus proxy destroyed right after firing an async call corrupts the shared connection it borrowed.** Cache one proxy per object path on the owning state instead of a throwaway per call.
 - **Adding a second writer to shared per-bin state should prompt auditing every existing writer.** `onParamChanged` recomputed FFT bin ranges off-mutex; only a problem once `setBarCount` made it frequent.
@@ -245,7 +246,8 @@ Drop an entry once newer knowledge fully supersedes it.
 
 - **A file writer must create its own target directory, not assume something else did.** `write_file_atomic` silently failed `save_config()` on fresh installs; other writers already `mkdir()` first.
 - **Merging a module's pure logic and EGL/GL code into one file forces graphics deps onto the test binary.** Keep the `*_test_sources`/`*_main_only_sources` split so the test binary stays free of EGL/GL.
-- **kokusei has no runtime shader preprocessor; flatten ported multi-file shaders at authoring time.** `resonance` inlines every `#include` and hand-expands `#expand` into string fragments assembled at runtime.
+- **kokusei has no runtime shader preprocessor; flatten ported multi-file shaders at authoring time.** `resonance` inlines every `#include` and hand-expands `#expand` into `assets/shaders/resonance/sphere/*.glsl` fragment files, concatenated at runtime by `resonance_shaders.cpp`.
+- **Every shell shader is a file under `assets/shaders/`, loaded via `gl_load_shader`/`gl_compile_program_files` (`render/gl.cpp`), not a baked-in string literal.** `KOKUSEI_SHADER_DIR` then a `assets/shaders/` dev-tree relative path, same fallback every bundled asset uses; meson ships the tree with `install_subdir`.
 - **Every bundled asset needs the installed-path-plus-dev-tree-fallback loading pattern.** A bare relative path resolves against the daemon's cwd, silently failing outside the source tree.
 - **A connect()-to-socket liveness probe is unreliable against a leftover socket file.** Prefer a flock()-guarded lock file, which the kernel releases automatically on process death.
 - **keqing-shell uses a separate `accentAlt` token for tile/chip selection borders, not `accent`.** `accent` is reserved for other UI like the nav rail and toggle track.

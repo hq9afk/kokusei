@@ -3,27 +3,29 @@
 #include <GLES2/gl2ext.h>
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 #include "render/gl.h"
 #include "render/renderer.h"
 #include "render/texture.h"
-
-#include "shaders/renderer_shaders.h"
 
 bool Renderer::init() {
     texture_detect_caps();
     video_texture_detect_caps(eglGetCurrentDisplay());
     glGenVertexArrays(1, &vao_);
     glBindVertexArray(vao_);
-    rect_program_ =
-        gl_compile_program(kRendererQuadVs, kRendererRectFs, "rect");
-    tex_program_ = gl_compile_program(kRendererQuadVs, kRendererTexFs, "tex");
-    rrect_program_ =
-        gl_compile_program(kRendererQuadVs, kRendererRrectFs, "rrect");
-    rounded_tex_program_ = gl_compile_program(
-        kRendererQuadVs, kRendererRoundedTexFs, "rounded_tex");
-    video_program_ =
-        gl_compile_program(kRendererQuadVs, kRendererVideoFs, "video");
+    std::string quad_vs = gl_load_shader("renderer/quad.vert");
+    auto build = [&](const char *fs_rel, const char *label) {
+        std::string fs = gl_load_shader(fs_rel);
+        if (quad_vs.empty() || fs.empty())
+            return GLuint{0};
+        return gl_compile_program(quad_vs.c_str(), fs.c_str(), label);
+    };
+    rect_program_ = build("renderer/rect.frag", "rect");
+    tex_program_ = build("renderer/tex.frag", "tex");
+    rrect_program_ = build("renderer/rrect.frag", "rrect");
+    rounded_tex_program_ = build("renderer/rounded_tex.frag", "rounded_tex");
+    video_program_ = build("renderer/video.frag", "video");
     if (!rect_program_ || !tex_program_ || !rrect_program_ ||
         !rounded_tex_program_ || !video_program_)
         return false;

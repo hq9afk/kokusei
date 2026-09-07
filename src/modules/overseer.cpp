@@ -215,7 +215,7 @@ bool overseer_init_egl(OverseerState &state, Renderer &renderer,
         return false;
     for (int i = 0; i < kOverseerMaxVisible; ++i)
         state.bullet_tex[i] = load_image_texture(
-            KOKUSEI_BULLET_DIR "/" + std::to_string(i + 1) + ".png");
+            KOKUSEI_BULLET_DIR "/C" + std::to_string(i + 1) + ".png");
     state.frame_clock.surface = state.surface;
     state.frame_clock.draw = [&state] { overseer_paint(state); };
     return true;

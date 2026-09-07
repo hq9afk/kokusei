@@ -21,8 +21,8 @@ class SphereResonance {
                             int audio_size, int tick, int canvas,
                             const ResonanceParams &params);
 
-    GLuint ncs1_prog_ = 0;
-    GLuint ncs2_prog_ = 0;
+    GLuint sphere1_prog_ = 0;
+    GLuint sphere2_prog_ = 0;
     GLuint glow_prog_ = 0;
     GLuint present_prog_ = 0;
 

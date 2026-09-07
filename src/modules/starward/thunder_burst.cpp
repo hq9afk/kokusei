@@ -9,14 +9,13 @@
 #include "render/gl.h"
 #include "render/renderer.h"
 
-#include "shaders/renderer_shaders.h"
-
 void thunder_burst_draw(ThunderBurst &tb, Renderer &renderer,
                         const ThunderParams &p) {
     if (!tb.bolt_tried) {
         tb.bolt_tried = true;
-        tb.bolt_program = gl_compile_program(kRendererQuadVs, kThunderBurstFs,
-                                             "thunder_bolt");
+        tb.bolt_program = gl_compile_program_files(
+            "renderer/quad.vert", "starward/thunder_burst.frag",
+            "thunder_bolt");
         klog("starward: thunder bolt_program=%u", tb.bolt_program);
     }
     if (!tb.bolt_program || !p.core || !p.glow)
@@ -72,8 +71,9 @@ void thunder_shock_draw(ThunderBurst &tb, Renderer &renderer,
                         const ThunderShockParams &p) {
     if (!tb.shock_tried) {
         tb.shock_tried = true;
-        tb.shock_program = gl_compile_program(kRendererQuadVs, kThunderShockFs,
-                                              "thunder_shock");
+        tb.shock_program = gl_compile_program_files(
+            "renderer/quad.vert", "starward/thunder_shock.frag",
+            "thunder_shock");
         klog("starward: thunder shock_program=%u", tb.shock_program);
     }
     if (!tb.shock_program || !p.core || !p.glow || p.radius <= 0.0f)
