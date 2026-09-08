@@ -36,7 +36,7 @@
 - `liyue_config.h`: Liyue workspace-grid geometry, timing, and live-capture throttle constants.
 - `expanse_config.h`: Expanse layer-shell namespace constant.
 - `trulla_config.h`: Trulla panel layout, opacity, animation, group, widget, popup, spinner constants, `TrullaFieldId` enum, `TrullaTabDef` type, and the five nav-rail tab labels (the icon-paired table itself is assembled in `trulla.cpp`).
-- `stiletto_config.h`: Stiletto-rain window size, glyph/cell/timing constants.
+- `stiletto_config.h`: Stiletto-rain window size, cell geometry, and rain-timing constants.
 - `blink_config.h`: Blink recent-activity pulse and blink-overlay fade, logo-speed, and layer-namespace constants.
 - `penance_config.h`: Penance-screen card ratio, three-column and side-panel geometry, fetch/media/resources/notification-dock constants, dot/input/avatar sizes, entrance/exit animation timings, and per-property animation owner ids.
 - `resonance_config.h`: Audio resonance surface-derived square render canvas (`0.75 * min(w,h)`), `11 kHz` stereo capture, CPU FFT, GLava GPU-transform constants, bar-visualizer geometry (`kResonanceBar*`), plus `ResonanceParams` runtime knobs (`visualizer_shape` (`ResonanceVisualizerShape` `Bar`/`Sphere`, default `Bar`), fps, particle thin/size, fractal complexity, glow directions/quality) and their clamp ranges (the shared `0.7` black backdrop moved to `render/palette.h`'s `window_backdrop`).
@@ -72,7 +72,7 @@
 - `slider.h`+`.cpp`: `draw_slider_track`, shared track+fill+click-region drawing for any slider.
 - `arc_gauge.h`+`.cpp`: `cached_arc_gauge`/`draw_arc_gauge`, shared cached circular arc-gauge texture plus icon/value/optional-sub-label stack layout; diameter, stroke, gaps, and tint colors are all caller params. Consumed by `yuheng`'s system-stats card and `penance`'s resource gauges.
 - `progress_bar.h`+`.cpp`: `draw_flat_bar`, shared track+fill rounded-bar drawing with a caller-set minimum fill width; no click regions or panel dependency. Consumed by `battery_panel`, `system_monitor_panel`, and `spark`'s OSD.
-- `stiletto_grid.h`+`.cpp`: Stiletto-rain glyph column simulation and Cairo-rasterized texture, state-free of surface concerns.
+- `stiletto_grid.h`+`.cpp`: Stiletto-rain column simulation that blits the `assets/stiletto.svg` sprite per cell into a Cairo-rasterized texture, state-free of surface concerns.
 
 ## src/service
 
@@ -228,8 +228,9 @@
 
 - `fonts/*`, `constellation/C*.png`: Installed fonts, overseer constellation bullet icons.
 - `shaders/**`: Every `#version 320 es` `GLES` shader the shell compiles - `renderer/` (shared `Renderer` quad `vs` + rect/tex/rrect/rounded-tex/video `fs`), `starward/` (two `thunder` `fs`), `resonance/` (shared `vs`/audio-pass `fs`, `bar/` and `sphere/` for the shape-specific shaders, `sphere/*.glsl` fragments assembled at runtime); installed as a subdir by meson, `NOTICE` records the `lygia`/`GLava` third-party parts.
-- `default.png`: Default expanse wallpaper, the `KOKUSEI_DEFAULT_WALLPAPER` fallback when a column has no configured path.
-- `default_wp.svg`: Blink screensaver bouncing-logo source (placeholder).
+- `stellar-restoration.png`: Default expanse wallpaper, the `KOKUSEI_DEFAULT_WALLPAPER` fallback when a column has no configured path.
+- `stellar-restoration.svg`: Blink screensaver bouncing-logo source (placeholder).
+- `stiletto.svg`: Stiletto-rain cell sprite, rasterized once and scaled to the rain cell height.
 - `electro.png`: Password-field echo glyph, ported from `keqing-shell`'s `Input.qml`, drawn per character.
 - `gifs/profile.gif`: Penance avatar, trulla and yuheng profile-picture source, decoded to cached frames via `ffmpeg`.
 - `starward/logo.gif`: Starward animated centre-logo source, decoded to cached frames via `ffmpeg`.

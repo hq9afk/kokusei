@@ -222,7 +222,7 @@ bool blink_overlay_init_egl(BlinkOverlayState &state, Renderer &renderer,
     state.frame_clock.draw = [&state] { blink_overlay_paint(state); };
 
     const char *logo_candidates[] = {KOKUSEI_IDLE_LOGO,
-                                     "assets/default_wp.svg"};
+                                     "assets/stellar-restoration.svg"};
     std::string logo_path = logo_candidates[1];
     for (const char *candidate : logo_candidates) {
         if (std::filesystem::exists(candidate)) {

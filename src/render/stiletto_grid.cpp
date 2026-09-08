@@ -2,8 +2,9 @@
 #include <cairo/cairo.h>
 #include <cmath>
 #include <cstdint>
+#include <filesystem>
+#include <librsvg/rsvg.h>
 #include <random>
-#include <string>
 
 #include "config/stiletto_config.h"
 
@@ -18,79 +19,63 @@ std::mt19937 &rng() {
     return gen;
 }
 
-const std::u32string &stiletto_glyph_pool() {
-    static const std::u32string pool = [] {
-        std::u32string s;
-        for (uint32_t cp = 0xFF66; cp <= 0xFF9D; ++cp)
-            s += static_cast<char32_t>(cp);
-        for (int i = 0; i < 2; ++i)
-            s += U"1234567890";
-        for (int i = 0; i < 4; ++i)
-            s += U"-=*_+|:<>\"";
-        return s;
-    }();
-    return pool;
-}
-
 float random01() {
     static std::uniform_real_distribution<float> dist(0.0f, 1.0f);
     return dist(rng());
 }
 
-std::string utf8_encode(char32_t cp) {
-    std::string s;
-    if (cp < 0x80) {
-        s += static_cast<char>(cp);
-    } else if (cp < 0x800) {
-        s += static_cast<char>(0xC0 | (cp >> 6));
-        s += static_cast<char>(0x80 | (cp & 0x3F));
-    } else if (cp < 0x10000) {
-        s += static_cast<char>(0xE0 | (cp >> 12));
-        s += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
-        s += static_cast<char>(0x80 | (cp & 0x3F));
-    } else {
-        s += static_cast<char>(0xF0 | (cp >> 18));
-        s += static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
-        s += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
-        s += static_cast<char>(0x80 | (cp & 0x3F));
-    }
-    return s;
+cairo_surface_t *stiletto_sprite() {
+    static cairo_surface_t *sprite = []() -> cairo_surface_t * {
+        const char *candidates[] = {KOKUSEI_STILETTO_SPRITE,
+                                    "assets/stiletto.svg"};
+        const char *path = candidates[1];
+        for (const char *c : candidates) {
+            if (std::filesystem::exists(c)) {
+                path = c;
+                break;
+            }
+        }
+        GError *error = nullptr;
+        RsvgHandle *handle = rsvg_handle_new_from_file(path, &error);
+        if (!handle) {
+            if (error)
+                g_error_free(error);
+            return nullptr;
+        }
+        double aspect = 1.0;
+        gdouble nat_w = 0.0, nat_h = 0.0;
+        if (rsvg_handle_get_intrinsic_size_in_pixels(handle, &nat_w, &nat_h) &&
+            nat_h > 0.0)
+            aspect = nat_w / nat_h;
+        int h = static_cast<int>(kStilettoCellHeight);
+        int w = std::max(1, static_cast<int>(std::lround(h * aspect)));
+        cairo_surface_t *s =
+            cairo_image_surface_create(CAIRO_FORMAT_ARGB32, w, h);
+        cairo_t *cr = cairo_create(s);
+        RsvgRectangle viewport = {0.0, 0.0, static_cast<double>(w),
+                                  static_cast<double>(h)};
+        rsvg_handle_render_document(handle, cr, &viewport, nullptr);
+        cairo_destroy(cr);
+        cairo_surface_flush(s);
+        g_object_unref(handle);
+        return s;
+    }();
+    return sprite;
 }
 
-void set_stiletto_font(cairo_t *cr, bool bold) {
-    cairo_select_font_face(cr, "Noto Sans CJK JP", CAIRO_FONT_SLANT_NORMAL,
-                           bold ? CAIRO_FONT_WEIGHT_BOLD
-                                : CAIRO_FONT_WEIGHT_NORMAL);
-    cairo_set_font_size(cr, kStilettoFontPx);
-}
-
-void draw_glyph_centered(cairo_t *cr, char32_t glyph, float cell_x,
-                         float cell_y, bool bold, const Color &color) {
-    set_stiletto_font(cr, bold);
-    std::string utf8 = utf8_encode(glyph);
-    cairo_text_extents_t extents;
-    cairo_text_extents(cr, utf8.c_str(), &extents);
-    float tx = cell_x + (kStilettoCellWidth - extents.width) / 2.0f -
-               extents.x_bearing;
-    float ty = cell_y + (kStilettoCellHeight - extents.height) / 2.0f -
-               extents.y_bearing;
+void draw_sprite_centered(cairo_t *cr, cairo_surface_t *sprite, float cell_x,
+                          float cell_y, const Color &color) {
+    if (!sprite)
+        return;
+    float sw = static_cast<float>(cairo_image_surface_get_width(sprite));
+    float sh = static_cast<float>(cairo_image_surface_get_height(sprite));
+    float tx = cell_x + (kStilettoCellWidth - sw) / 2.0f;
+    float ty = cell_y + (kStilettoCellHeight - sh) / 2.0f;
     cairo_set_source_rgba(cr, color.r, color.g, color.b, color.a);
-    cairo_move_to(cr, std::round(tx), std::round(ty));
-    cairo_show_text(cr, utf8.c_str());
+    cairo_mask_surface(cr, sprite, std::round(tx), std::round(ty));
 }
 
 } // namespace
-
-char32_t StilettoGrid::random_glyph() const {
-    const std::u32string &pool = stiletto_glyph_pool();
-    if (pool.empty())
-        return U' ';
-    size_t idx =
-        static_cast<size_t>(random01() * static_cast<float>(pool.size()));
-    if (idx >= pool.size())
-        idx = pool.size() - 1;
-    return pool[idx];
-}
 
 void StilettoGrid::rebuild(int width, int height) {
     width_ = std::max(1, width);
@@ -147,10 +132,7 @@ void StilettoGrid::tick() {
     cairo_surface_t *surface = cairo_image_surface_create_for_data(
         buffer_.data(), CAIRO_FORMAT_ARGB32, width_, height_, stride_);
     cairo_t *cr = cairo_create(surface);
-    cairo_font_options_t *opts = cairo_font_options_create();
-    cairo_font_options_set_antialias(opts, CAIRO_ANTIALIAS_GRAY);
-    cairo_set_font_options(cr, opts);
-    cairo_font_options_destroy(opts);
+    cairo_surface_t *sprite = stiletto_sprite();
 
     for (int c = 0; c < column_count_; ++c) {
         Column &col = columns_[static_cast<size_t>(c)];
@@ -158,16 +140,12 @@ void StilettoGrid::tick() {
 
         if (col.last_head_valid) {
             float last_y = offset_y_ + col.last_head_drop * kStilettoCellHeight;
-            draw_glyph_centered(cr, col.last_glyph, x, last_y, false,
-                                palette::accent);
+            draw_sprite_centered(cr, sprite, x, last_y, palette::accent);
         }
 
         if (col.drop >= 0.0f) {
             float y = offset_y_ + col.drop * kStilettoCellHeight;
-            bool bold = random01() < kStilettoBoldChance;
-            char32_t glyph = random_glyph();
-            draw_glyph_centered(cr, glyph, x, y, bold, palette::text);
-            col.last_glyph = glyph;
+            draw_sprite_centered(cr, sprite, x, y, palette::text);
             col.last_head_drop = col.drop;
             col.last_head_valid = true;
         } else {

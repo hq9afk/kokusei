@@ -18,13 +18,11 @@ class StilettoGrid {
         float drop = 0.0f;
         bool ever_reset = false;
         float last_head_drop = 0.0f;
-        char32_t last_glyph = U' ';
         bool last_head_valid = false;
     };
 
     void decay();
     float start_drop() const { return -2.0f; }
-    char32_t random_glyph() const;
 
     int width_ = 0;
     int height_ = 0;

@@ -38,8 +38,9 @@ kokusei_bullet_dir = kokusei_data_dir / 'constellation'
 
 install_data('assets/fonts/tabler-icons.ttf', install_dir: kokusei_font_dir) # shell-wide icons
 install_data('assets/fonts/YujiMai.ttf', install_dir: kokusei_font_dir)      # starward module
-install_data('assets/default.png', install_dir: kokusei_data_dir)            # default wallpaper
-install_data('assets/default_wp.svg', install_dir: kokusei_data_dir)         # idle screensaver logo (placeholder)
+install_data('assets/stellar-restoration.png', install_dir: kokusei_data_dir)            # default wallpaper
+install_data('assets/stellar-restoration.svg', install_dir: kokusei_data_dir)         # idle screensaver logo (placeholder)
+install_data('assets/stiletto.svg', install_dir: kokusei_data_dir)
 install_data('assets/electro.png', install_dir: kokusei_data_dir)            # password echo glyph
 install_data('assets/gifs/profile.gif', install_dir: kokusei_data_dir / 'gifs') # lock avatar + settings pfp
 install_data('assets/starward/logo.gif', install_dir: kokusei_data_dir / 'starward') # starward centre logo (animated)
@@ -348,12 +349,13 @@ executable(
   cpp_args: [
     '-DKOKUSEI_FONT_DIR="' + kokusei_font_dir + '"',
     '-DKOKUSEI_SHADER_DIR="' + kokusei_data_dir / 'shaders' + '"',
-    '-DKOKUSEI_DEFAULT_WALLPAPER="' + kokusei_data_dir / 'default.png' + '"',
+    '-DKOKUSEI_DEFAULT_WALLPAPER="' + kokusei_data_dir / 'stellar-restoration.png' + '"',
     '-DKOKUSEI_BULLET_DIR="' + kokusei_bullet_dir + '"',
     '-DKOKUSEI_YUJIMAI_FONT="' + kokusei_font_dir / 'YujiMai.ttf' + '"',
     '-DKOKUSEI_STARWARD_LOGO="' + kokusei_data_dir / 'starward/logo.gif' + '"',
     '-DKOKUSEI_STARWARD_LOGO_STATIC="' + kokusei_data_dir / 'starward/logo.png' + '"',
-    '-DKOKUSEI_IDLE_LOGO="' + kokusei_data_dir / 'default_wp.svg' + '"',
+    '-DKOKUSEI_IDLE_LOGO="' + kokusei_data_dir / 'stellar-restoration.svg' + '"',
+    '-DKOKUSEI_STILETTO_SPRITE="' + kokusei_data_dir / 'stiletto.svg' + '"',
     '-DKOKUSEI_INPUT_ECHO="' + kokusei_data_dir / 'electro.png' + '"',
     '-DKOKUSEI_PAM_DIR="' + kokusei_data_dir / 'pam' + '"',
     '-DKOKUSEI_PROFILE_MEDIA="' + kokusei_data_dir / 'gifs/profile.gif' + '"',
@@ -411,7 +413,7 @@ kokusei_test = executable(
   ],
   cpp_args: [
     # Source asset, not the install dir, so the test runs uninstalled.
-    '-DKOKUSEI_DEFAULT_WALLPAPER="' + meson.current_source_dir() / 'assets/default.png' + '"',
+    '-DKOKUSEI_DEFAULT_WALLPAPER="' + meson.current_source_dir() / 'assets/stellar-restoration.png' + '"',
     '-DKOKUSEI_BULLET_DIR="' + kokusei_bullet_dir + '"',
     '-DKOKUSEI_FONT_DIR="' + kokusei_font_dir + '"',
     '-DKOKUSEI_MEDIA_PLUGIN="' + kokusei_data_dir / 'plugins/libkokusei-media.so' + '"',
