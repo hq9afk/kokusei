@@ -141,7 +141,6 @@ kokusei_render_main_only_sources = [
   'src/render/slider.cpp',
   'src/render/arc_gauge.cpp',
   'src/render/progress_bar.cpp',
-  'src/render/stiletto_grid.cpp',
   'src/render/video_texture.cpp',
 ]
 
@@ -232,7 +231,9 @@ kokusei_overlay_main_only_sources = [
   'src/modules/starward/thunder_burst.cpp',
   'src/modules/yuheng.cpp',
   'src/modules/liyue.cpp',
-  'src/modules/stiletto.cpp',
+  'src/modules/rain.cpp',
+  'src/modules/rain/matrix_rain.cpp',
+  'src/modules/rain/stiletto_rain.cpp',
   'src/modules/resonance.cpp',
   'src/modules/resonance/audio_capture.cpp',
   'src/modules/resonance/audio_stages.cpp',
@@ -267,6 +268,7 @@ kokusei_trulla_main_only_sources = [
   'src/modules/trulla/blink_tab.cpp',
   'src/modules/trulla/starward_tab.cpp',
   'src/modules/trulla/resonance_tab.cpp',
+  'src/modules/trulla/rain_tab.cpp',
 ]
 
 kokusei_split_sources = [

@@ -35,8 +35,8 @@
 - `yuheng_config.h`: Yuheng card-stack geometry and gauge/temp-warn color constants.
 - `liyue_config.h`: Liyue workspace-grid geometry, timing, and live-capture throttle constants.
 - `expanse_config.h`: Expanse layer-shell namespace constant.
-- `trulla_config.h`: Trulla panel layout, opacity, animation, group, widget, popup, spinner constants, `TrullaFieldId` enum, `TrullaTabDef` type, and the five nav-rail tab labels (the icon-paired table itself is assembled in `trulla.cpp`).
-- `stiletto_config.h`: Stiletto-rain window size, cell geometry, and rain-timing constants.
+- `trulla_config.h`: Trulla panel layout, opacity, animation, group, widget, popup, spinner constants, `TrullaFieldId` enum, `TrullaTabDef` type, and the six nav-rail tab labels (the icon-paired table itself is assembled in `trulla.cpp`).
+- `rain_config.h`: `RainMode`/`RainParams` (matrix vs stiletto, `async_speed` flag), shared rain window size, step/decay/respawn timing, `kRainAsyncSpeed{Min,Max}` per-column fall-rate spread, plus per-sim `kMatrixRain*` glyph-cell and `kStilettoRain*` comet-row constants.
 - `blink_config.h`: Blink recent-activity pulse and blink-overlay fade, logo-speed, and layer-namespace constants.
 - `penance_config.h`: Penance-screen card ratio, three-column and side-panel geometry, fetch/media/resources/notification-dock constants, dot/input/avatar sizes, entrance/exit animation timings, and per-property animation owner ids.
 - `resonance_config.h`: Audio resonance surface-derived square render canvas (`0.75 * min(w,h)`), `11 kHz` stereo capture, CPU FFT, GLava GPU-transform constants, bar-visualizer geometry (`kResonanceBar*`), plus `ResonanceParams` runtime knobs (`visualizer_shape` (`ResonanceVisualizerShape` `Bar`/`Sphere`, default `Bar`), fps, particle thin/size, fractal complexity, glow directions/quality) and their clamp ranges (the shared `0.7` black backdrop moved to `render/palette.h`'s `window_backdrop`).
@@ -72,7 +72,6 @@
 - `slider.h`+`.cpp`: `draw_slider_track`, shared track+fill+click-region drawing for any slider.
 - `arc_gauge.h`+`.cpp`: `cached_arc_gauge`/`draw_arc_gauge`, shared cached circular arc-gauge texture plus icon/value/optional-sub-label stack layout; diameter, stroke, gaps, and tint colors are all caller params. Consumed by `yuheng`'s system-stats card and `penance`'s resource gauges.
 - `progress_bar.h`+`.cpp`: `draw_flat_bar`, shared track+fill rounded-bar drawing with a caller-set minimum fill width; no click regions or panel dependency. Consumed by `battery_panel`, `system_monitor_panel`, and `spark`'s OSD.
-- `stiletto_grid.h`+`.cpp`: Stiletto-rain column simulation that blits the `assets/stiletto.svg` sprite per cell into a Cairo-rasterized texture, state-free of surface concerns.
 
 ## src/service
 
@@ -118,7 +117,7 @@
 - `expanse.h`+`.cpp`: Per-monitor background surface; defines `ExpanseColumn` (one column's static `Texture` or animated `media_service` playback + zero-copy `VideoTexture`, generation-guarded upload, fill-mode draw) and drives a `ExpanseColumn` vector synced from config, drawn shared by `penance` and blink ambient. `ExpansePerMonitorModule::tick` clears `ExpanseState::visible` and pauses column decode while a fullscreen overlay (`starward`/`liyue`) covers the output; `expanse_paint` no-ops while `!visible` or `session_locked`, but decode keeps running under a lock so `penance` composites the live wallpaper.
 - `blink.h`+`.cpp`: Recent-activity blink clock feeding the per-monitor ambient/screensaver overlay surface; screensaver bounces an `AnimatedImage` logo, freed while not shown.
 - `trulla.h`+`.cpp`: Trulla panel core, hosts per-tab modules, responsive nav rail, owns shared toggle-row widgets and `draw_profile_block`.
-- `stiletto.h`+`.cpp`: Stiletto-rain overlay, a real `xdg_toplevel` window, rebuilds the grid on live resize.
+- `rain.h`+`.cpp`: Rain overlay, a real `xdg_toplevel` window; hosts the `MatrixRain` and `StilettoRain` sims, steps the `RainMode`-selected one at `kRainFallIntervalMs`, re-arms its sweep on live resize, and applies `mode`/`async_speed` live via `rain_apply_params` (`Module::apply_config`, and `RainModule::init_egl` for the boot config).
 - `resonance.h`+`.cpp`: Audio resonance overlay window; render thread runs either `SphereResonance` (ported `ncs`/WayVes Perlin-noise blob, `accent`-tinted over a `0.7` black backdrop, plus `glow` post) or `BarResonance` (log-frequency bars), selected by `ResonanceParams::visualizer_shape`; fed by own `11 kHz` stereo PipeWire capture, CPU FFT, and a GLava GPU transform chain; dedicated render thread and share-context `EGLContext`; render thread self-paces to `ResonanceParams::fps` for the sphere and a fixed `kResonanceBarFps` for the bars, and reads live knobs via `resonance_apply_params` (`Module::apply_config`).
 - `penance.h`+`.cpp`: `ext-session-lock-v1` session lock; one lock surface per `wl_output`, `PAM` auth on a worker thread, `caelestia`-style fixed-ratio card with a three-column layout (battery/fetch/media, center clock+date+avatar+pill, resources/notifications) drawn from `mpris`/`system_stats`/`cpu_temp`/`gpu_temp`/`upower`/`notification_service`, entrance/exit spin-expand choreography.
 
@@ -140,6 +139,11 @@
 - `layout.h`+`.cpp`: Pure penance-panel geometry math (fixed-ratio card size, three-column split, equal-height side-card split, center scale, content-stack height, fetch colour-box count, dot row); no `EGL`, linked into the test binary.
 - `pam_authenticator.h`+`.cpp`: `pam_start_confdir`-based password check for the current user against the shipped `kokusei` `PAM` service, with a `login` fallback; run off the poll thread by the penance module.
 
+## src/modules/rain
+
+- `matrix_rain.h`+`.cpp`: `MatrixRain` character-matrix sim: per-column falling head glyph (half-width katakana, digits, punctuation, `Noto Sans CJK JP`) over an accumulation-buffer `accent` decay trail, synchronous top-down sweep on `rebuild`, Cairo-rasterized to one window texture per step; `async_speed` gives each column a random `kRainAsyncSpeed*` rate applied by skipping ticks so glyphs stay cell-snapped.
+- `stiletto_rain.h`+`.cpp`: `StilettoRain` comet sim: the decaying accumulation buffer holds only a continuous `accent` line stroked head-to-head each step (one connected tail); the `assets/stiletto.svg` head is composited fresh onto a per-frame copy so it never trails itself. Synchronous top-down sweep on `rebuild`, aspect-correct sprite rasterized once via `librsvg`; `async_speed` scales each comet's per-step advance by a random `kRainAsyncSpeed*` factor.
+
 ## src/modules/overseer
 
 - `apps_provider.h`+`.cpp`: App name scoring and search over `DesktopEntry` lists.
@@ -157,6 +161,7 @@
 - `blink_tab.h`+`.cpp`: Per-tab trulla UI and commit logic.
 - `starward_tab.h`+`.cpp`: Per-tab trulla UI and commit logic (central-logo static/animated toggle).
 - `resonance_tab.h`+`.cpp`: Per-tab trulla UI and commit logic; `Bar`/`Sphere` visualizer-shape selector row, then a number-field row per `ResonanceParams` knob with per-row reset shown only when `Sphere` is selected.
+- `rain_tab.h`+`.cpp`: Per-tab trulla UI and commit logic; `Matrix`/`Stiletto` `RainMode` selector row plus an `Asynchronous fall speed` toggle row.
 
 ## src/modules/qixing
 
@@ -230,7 +235,7 @@
 - `shaders/**`: Every `#version 320 es` `GLES` shader the shell compiles - `renderer/` (shared `Renderer` quad `vs` + rect/tex/rrect/rounded-tex/video `fs`), `starward/` (two `thunder` `fs`), `resonance/` (shared `vs`/audio-pass `fs`, `bar/` and `sphere/` for the shape-specific shaders, `sphere/*.glsl` fragments assembled at runtime); installed as a subdir by meson, `NOTICE` records the `lygia`/`GLava` third-party parts.
 - `stellar-restoration.png`: Default expanse wallpaper, the `KOKUSEI_DEFAULT_WALLPAPER` fallback when a column has no configured path.
 - `stellar-restoration.svg`: Blink screensaver bouncing-logo source (placeholder).
-- `stiletto.svg`: Stiletto-rain cell sprite, rasterized once and scaled to the rain cell height.
+- `stiletto.svg`: `stiletto_rain` comet head, rasterized once aspect-correct and scaled to the comet-row head height.
 - `electro.png`: Password-field echo glyph, ported from `keqing-shell`'s `Input.qml`, drawn per character.
 - `gifs/profile.gif`: Penance avatar, trulla and yuheng profile-picture source, decoded to cached frames via `ffmpeg`.
 - `starward/logo.gif`: Starward animated centre-logo source, decoded to cached frames via `ffmpeg`.

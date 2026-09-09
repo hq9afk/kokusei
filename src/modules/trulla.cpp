@@ -12,6 +12,7 @@
 #include "modules/trulla.h"
 #include "modules/trulla/blink_tab.h"
 #include "modules/trulla/displays_tab.h"
+#include "modules/trulla/rain_tab.h"
 #include "modules/trulla/resonance_tab.h"
 #include "modules/trulla/starward_tab.h"
 
@@ -30,6 +31,7 @@ constexpr TrullaTabDef kTrullaTabs[kTrullaTabCount] = {
     {kTrullaTabLabels[2], icon::moon_stars},
     {kTrullaTabLabels[3], icon::power},
     {kTrullaTabLabels[4], icon::wave_sine},
+    {kTrullaTabLabels[5], icon::code},
 };
 
 } // namespace
@@ -216,7 +218,8 @@ void trulla_handle_click(TrullaState &state, const Config &cfg,
             if (!expanse_tab_handle_click(state, cfg, on_commit, region) &&
                 !displays_tab_handle_click(state, cfg, on_commit, region) &&
                 !blink_tab_handle_click(state, cfg, on_commit, region) &&
-                !resonance_tab_handle_click(state, cfg, on_commit, region))
+                !resonance_tab_handle_click(state, cfg, on_commit, region) &&
+                !rain_tab_handle_click(state, cfg, on_commit, region))
                 starward_tab_handle_click(state, cfg, on_commit, region);
             return;
         case PanelClickKind::FieldFocus:
@@ -543,6 +546,11 @@ void trulla_paint(TrullaState &state, const Config &cfg,
         case TrullaTab::Resonance: {
             float row_w = panel_x + panel_w - kPanelPadding - label_x;
             resonance_tab_paint(state, root, scale, label_x, y, row_w, cfg);
+            break;
+        }
+        case TrullaTab::Rain: {
+            float row_w = panel_x + panel_w - kPanelPadding - label_x;
+            rain_tab_paint(state, root, scale, label_x, y, row_w, cfg);
             break;
         }
         }

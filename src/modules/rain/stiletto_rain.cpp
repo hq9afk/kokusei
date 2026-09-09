@@ -6,10 +6,11 @@
 #include <librsvg/rsvg.h>
 #include <random>
 
-#include "config/stiletto_config.h"
+#include "config/rain_config.h"
+
+#include "modules/rain/stiletto_rain.h"
 
 #include "render/palette.h"
-#include "render/stiletto_grid.h"
 #include "render/text.h"
 
 namespace {
@@ -23,6 +24,8 @@ float random01() {
     static std::uniform_real_distribution<float> dist(0.0f, 1.0f);
     return dist(rng());
 }
+
+float random_range(float lo, float hi) { return lo + (hi - lo) * random01(); }
 
 cairo_surface_t *stiletto_sprite() {
     static cairo_surface_t *sprite = []() -> cairo_surface_t * {
@@ -47,7 +50,7 @@ cairo_surface_t *stiletto_sprite() {
         if (rsvg_handle_get_intrinsic_size_in_pixels(handle, &nat_w, &nat_h) &&
             nat_h > 0.0)
             aspect = nat_w / nat_h;
-        int h = static_cast<int>(kStilettoCellHeight);
+        int h = static_cast<int>(kStilettoRainHeadHeightPx);
         int w = std::max(1, static_cast<int>(std::lround(h * aspect)));
         cairo_surface_t *s =
             cairo_image_surface_create(CAIRO_FORMAT_ARGB32, w, h);
@@ -63,46 +66,60 @@ cairo_surface_t *stiletto_sprite() {
     return sprite;
 }
 
-void draw_sprite_centered(cairo_t *cr, cairo_surface_t *sprite, float cell_x,
-                          float cell_y, const Color &color) {
+void draw_sprite_centered(cairo_t *cr, cairo_surface_t *sprite, float cx,
+                          float y, const Color &color) {
     if (!sprite)
         return;
     float sw = static_cast<float>(cairo_image_surface_get_width(sprite));
     float sh = static_cast<float>(cairo_image_surface_get_height(sprite));
-    float tx = cell_x + (kStilettoCellWidth - sw) / 2.0f;
-    float ty = cell_y + (kStilettoCellHeight - sh) / 2.0f;
+    float tx = cx - sw / 2.0f;
+    float ty = y - sh / 2.0f;
     cairo_set_source_rgba(cr, color.r, color.g, color.b, color.a);
     cairo_mask_surface(cr, sprite, std::round(tx), std::round(ty));
 }
 
+void draw_trail_segment(cairo_t *cr, float x, float y0, float y1) {
+    const Color &a = palette::accent;
+    cairo_set_source_rgba(cr, a.r, a.g, a.b, a.a);
+    cairo_set_line_width(cr, kStilettoRainTrailWidthPx);
+    cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+    cairo_move_to(cr, std::round(x), y0);
+    cairo_line_to(cr, std::round(x), y1);
+    cairo_stroke(cr);
+}
+
 } // namespace
 
-void StilettoGrid::rebuild(int width, int height) {
+void StilettoRain::rebuild(int width, int height, bool async_speed) {
     width_ = std::max(1, width);
     height_ = std::max(1, height);
 
     column_count_ =
-        std::max(1, static_cast<int>(width_ / (kStilettoCellWidth * 2)));
-    row_count_ = std::max(1, static_cast<int>(height_ / kStilettoCellHeight));
+        std::max(1, static_cast<int>(width_ / kStilettoRainColumnSpacingPx));
+    float content_w = (column_count_ - 1) * kStilettoRainColumnSpacingPx;
+    origin_x_ = (width_ - content_w) / 2.0f;
 
-    columns_.assign(static_cast<size_t>(column_count_), Column{});
-    for (Column &c : columns_)
+    comets_.assign(static_cast<size_t>(column_count_), Comet{});
+    for (Comet &c : comets_) {
         c.drop = start_drop();
+        c.speed = async_speed
+                      ? random_range(kRainAsyncSpeedMin, kRainAsyncSpeedMax)
+                      : 1.0f;
+    }
 
-    float content_width =
-        column_count_ * kStilettoCellWidth * 2 - kStilettoCellWidth;
-    offset_x_ = (width_ - content_width) / 2.0f;
-    offset_y_ = (height_ - row_count_ * kStilettoCellHeight) / 2.0f;
+    sweeping_ = true;
+    sweep_drop_ = start_drop();
 
     stride_ = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, width_);
     buffer_.assign(static_cast<size_t>(stride_) * static_cast<size_t>(height_),
                    0);
+    frame_.assign(buffer_.size(), 0);
     texture_ = Texture{};
 }
 
-void StilettoGrid::decay() {
+void StilettoRain::decay() {
     int alpha_step =
-        std::clamp(static_cast<int>(255.0f * kStilettoFadeAlpha), 1, 255);
+        std::clamp(static_cast<int>(255.0f * kRainFadeAlpha), 1, 255);
     for (int y = 0; y < height_; ++y) {
         uint8_t *row = buffer_.data() + static_cast<size_t>(y) * stride_;
         for (int x = 0; x < width_; ++x) {
@@ -123,44 +140,68 @@ void StilettoGrid::decay() {
     }
 }
 
-void StilettoGrid::tick() {
-    if (buffer_.empty() || columns_.empty())
+void StilettoRain::tick() {
+    if (buffer_.empty() || comets_.empty())
         return;
 
     decay();
 
-    cairo_surface_t *surface = cairo_image_surface_create_for_data(
-        buffer_.data(), CAIRO_FORMAT_ARGB32, width_, height_, stride_);
-    cairo_t *cr = cairo_create(surface);
     cairo_surface_t *sprite = stiletto_sprite();
 
-    for (int c = 0; c < column_count_; ++c) {
-        Column &col = columns_[static_cast<size_t>(c)];
-        float x = offset_x_ + c * kStilettoCellWidth * 2.0f;
+    cairo_surface_t *trail = cairo_image_surface_create_for_data(
+        buffer_.data(), CAIRO_FORMAT_ARGB32, width_, height_, stride_);
+    cairo_t *tcr = cairo_create(trail);
+    for (int i = 0; i < column_count_; ++i) {
+        Comet &c = comets_[static_cast<size_t>(i)];
+        float x = origin_x_ + i * kStilettoRainColumnSpacingPx;
 
-        if (col.last_head_valid) {
-            float last_y = offset_y_ + col.last_head_drop * kStilettoCellHeight;
-            draw_sprite_centered(cr, sprite, x, last_y, palette::accent);
-        }
-
-        if (col.drop >= 0.0f) {
-            float y = offset_y_ + col.drop * kStilettoCellHeight;
-            draw_sprite_centered(cr, sprite, x, y, palette::text);
-            col.last_head_drop = col.drop;
-            col.last_head_valid = true;
+        float head = sweeping_ ? sweep_drop_ : c.drop;
+        if (head >= 0.0f) {
+            if (c.last_valid)
+                draw_trail_segment(tcr, x, c.last_drop, head);
+            c.last_drop = head;
+            c.last_valid = true;
         } else {
-            col.last_head_valid = false;
+            c.last_valid = false;
         }
+    }
+    cairo_destroy(tcr);
+    cairo_surface_flush(trail);
+    cairo_surface_destroy(trail);
 
-        col.drop += 1.0f;
+    frame_ = buffer_;
+    cairo_surface_t *surface = cairo_image_surface_create_for_data(
+        frame_.data(), CAIRO_FORMAT_ARGB32, width_, height_, stride_);
+    cairo_t *cr = cairo_create(surface);
+    for (int i = 0; i < column_count_; ++i) {
+        const Comet &c = comets_[static_cast<size_t>(i)];
+        float x = origin_x_ + i * kStilettoRainColumnSpacingPx;
+        float head = sweeping_ ? sweep_drop_ : c.drop;
+        if (head >= 0.0f)
+            draw_sprite_centered(cr, sprite, x, head, palette::text);
+    }
 
-        if (col.drop * kStilettoCellHeight > static_cast<float>(height_) &&
-            random01() < kStilettoResetChance) {
-            col.drop = col.ever_reset
-                           ? -(random01() * static_cast<float>(row_count_))
-                           : start_drop();
-            col.ever_reset = true;
-            col.last_head_valid = false;
+    if (sweeping_) {
+        sweep_drop_ += kStilettoRainStepPx;
+        if (sweep_drop_ > static_cast<float>(height_) + kStilettoRainStepPx) {
+            sweeping_ = false;
+            for (Comet &c : comets_) {
+                c.drop = -(random01() * static_cast<float>(height_));
+                c.ever_reset = true;
+                c.last_valid = false;
+            }
+        }
+    } else {
+        for (Comet &c : comets_) {
+            c.drop += kStilettoRainStepPx * c.speed;
+            if (c.drop > static_cast<float>(height_) &&
+                random01() < kRainResetChance) {
+                c.drop = c.ever_reset
+                             ? -(random01() * static_cast<float>(height_))
+                             : start_drop();
+                c.ever_reset = true;
+                c.last_valid = false;
+            }
         }
     }
 

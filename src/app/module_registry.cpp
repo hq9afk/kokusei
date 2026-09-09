@@ -14,10 +14,10 @@
 #include "modules/overseer.h"
 #include "modules/penance.h"
 #include "modules/qixing.h"
+#include "modules/rain.h"
 #include "modules/resonance.h"
 #include "modules/spark.h"
 #include "modules/starward.h"
-#include "modules/stiletto.h"
 #include "modules/trulla.h"
 #include "modules/yuheng.h"
 
@@ -529,27 +529,34 @@ class TrullaModule final : public Module, public TextInputClient {
     bool hovering_clickable_ = false;
 };
 
-class StilettoModule final : public Module {
+class RainModule final : public Module {
   public:
-    const char *name() const override { return "stiletto"; }
+    const char *name() const override { return "rain"; }
     bool is_open() const override { return state_.base.open; }
 
     bool create_surface(WaylandState &, wl_output *) override { return true; }
-    bool init_egl(WaylandState &) override { return true; }
+    bool init_egl(WaylandState &app) override {
+        rain_apply_params(state_, app.cfg.rain);
+        return true;
+    }
     bool configured() const override { return true; }
     wl_surface *surface() const override { return state_.base.surface; }
-    void request_frame() override { stiletto_request_frame(state_); }
+    void request_frame() override { rain_request_frame(state_); }
 
     void handle_key_event(WaylandState &app, const KeyEvent &event) override {
-        stiletto_handle_key_event(state_, app, event);
+        rain_handle_key_event(state_, app, event);
+    }
+
+    void apply_config(WaylandState &, const Config &cfg) override {
+        rain_apply_params(state_, cfg.rain);
     }
 
     std::vector<IpcHandler> ipc_handlers(WaylandState &app) override {
-        return stiletto_ipc_handlers(state_, app);
+        return rain_ipc_handlers(state_, app);
     }
 
   private:
-    StilettoState state_;
+    RainState state_;
 };
 
 class ResonanceModule final : public Module {
@@ -959,7 +966,7 @@ std::vector<std::unique_ptr<Module>> build_app_modules() {
     modules.push_back(std::make_unique<YuhengModule>());
     modules.push_back(std::make_unique<LiyueModule>());
     modules.push_back(std::make_unique<TrullaModule>());
-    modules.push_back(std::make_unique<StilettoModule>());
+    modules.push_back(std::make_unique<RainModule>());
     modules.push_back(std::make_unique<ResonanceModule>());
     modules.push_back(std::make_unique<PenanceModule>());
     return modules;

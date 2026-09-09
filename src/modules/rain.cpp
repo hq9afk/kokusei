@@ -3,25 +3,53 @@
 #include "app/monitor_output.h"
 #include "app/wayland_state.h"
 
-#include "modules/stiletto.h"
+#include "modules/rain.h"
 
 #include "render/gl.h"
 #include "render/node.h"
 #include "render/overlay_panel.h"
 #include "render/palette.h"
 
-void stiletto_request_frame(StilettoState &state) {
+namespace {
+
+void rain_rebuild_active(RainState &state, int width, int height) {
+    if (state.mode == RainMode::Matrix)
+        state.matrix.rebuild(width, height, state.async_speed);
+    else
+        state.stiletto.rebuild(width, height, state.async_speed);
+}
+
+void rain_tick_active(RainState &state) {
+    if (state.mode == RainMode::Matrix)
+        state.matrix.tick();
+    else
+        state.stiletto.tick();
+}
+
+bool rain_active_ready(const RainState &state) {
+    return state.mode == RainMode::Matrix ? state.matrix.ready()
+                                          : state.stiletto.ready();
+}
+
+const Texture &rain_active_texture(const RainState &state) {
+    return state.mode == RainMode::Matrix ? state.matrix.texture()
+                                          : state.stiletto.texture();
+}
+
+} // namespace
+
+void rain_request_frame(RainState &state) {
     toplevel_window_request_frame(state.base);
 }
 
-void stiletto_toggle(StilettoState &state, WaylandState &app) {
+void rain_toggle(RainState &state, WaylandState &app) {
     bool opening = !state.base.open;
     if (opening) {
         if (state.base.egl_surface == EGL_NO_SURFACE) {
             if (!toplevel_window_create_surface(
-                    state.base, app.compositor, app.wm_base, "Matrix",
-                    "kokusei-stiletto", kStilettoDefaultWindowWidth,
-                    kStilettoDefaultWindowHeight))
+                    state.base, app.compositor, app.wm_base, "Rain",
+                    "kokusei-rain", kRainDefaultWindowWidth,
+                    kRainDefaultWindowHeight))
                 return;
             while (!state.base.configured)
                 wl_display_dispatch(app.display);
@@ -31,15 +59,15 @@ void stiletto_toggle(StilettoState &state, WaylandState &app) {
                 return;
             }
             state.renderer = &app.renderer;
-            state.base.frame_clock.draw = [&state] { stiletto_paint(state); };
+            state.base.frame_clock.draw = [&state] { rain_paint(state); };
             state.base.on_close_request = [&state, &app] {
-                stiletto_toggle(state, app);
+                rain_toggle(state, app);
             };
         }
         state.base.open = true;
-        state.grid.rebuild(state.base.width, state.base.height);
-        state.grid_width = state.base.width;
-        state.grid_height = state.base.height;
+        rain_rebuild_active(state, state.base.width, state.base.height);
+        state.built_width = state.base.width;
+        state.built_height = state.base.height;
         state.last_tick = std::chrono::steady_clock::now();
     }
 
@@ -57,21 +85,35 @@ void stiletto_toggle(StilettoState &state, WaylandState &app) {
     }
 }
 
-void stiletto_handle_key_event(StilettoState &state, WaylandState &app,
-                               const KeyEvent &event) {
+void rain_handle_key_event(RainState &state, WaylandState &app,
+                           const KeyEvent &event) {
     if (event.kind == KeyKind::Escape)
-        stiletto_toggle(state, app);
+        rain_toggle(state, app);
 }
 
-std::vector<IpcHandler> stiletto_ipc_handlers(StilettoState &stiletto,
-                                              WaylandState &state) {
+void rain_apply_params(RainState &state, const RainParams &params) {
+    bool changed =
+        params.mode != state.mode || params.async_speed != state.async_speed;
+    state.mode = params.mode;
+    state.async_speed = params.async_speed;
+    if (changed && state.base.open) {
+        rain_rebuild_active(state, state.base.width, state.base.height);
+        state.built_width = state.base.width;
+        state.built_height = state.base.height;
+        state.last_tick = std::chrono::steady_clock::now();
+        rain_request_frame(state);
+    }
+}
+
+std::vector<IpcHandler> rain_ipc_handlers(RainState &rain,
+                                          WaylandState &state) {
     return {
-        {"stiletto", [&stiletto, &state] { stiletto_toggle(stiletto, state); },
-         "toggle the matrix rain overlay"},
+        {"rain", [&rain, &state] { rain_toggle(rain, state); },
+         "toggle the rain overlay"},
     };
 }
 
-void stiletto_paint(StilettoState &state) {
+void rain_paint(RainState &state) {
     if (state.base.egl_surface == EGL_NO_SURFACE)
         return;
     auto now = std::chrono::steady_clock::now();
@@ -94,29 +136,29 @@ void stiletto_paint(StilettoState &state) {
     node_add_rect(&state.scene.root, 0.0f, 0.0f, win_w, win_h,
                   rgba(palette::window_backdrop));
 
-    if (state.base.width != state.grid_width ||
-        state.base.height != state.grid_height) {
-        state.grid.rebuild(state.base.width, state.base.height);
-        state.grid_width = state.base.width;
-        state.grid_height = state.base.height;
+    if (state.base.width != state.built_width ||
+        state.base.height != state.built_height) {
+        rain_rebuild_active(state, state.base.width, state.base.height);
+        state.built_width = state.base.width;
+        state.built_height = state.base.height;
         state.last_tick = now;
     }
 
     float elapsed_ms =
         std::chrono::duration<float, std::milli>(now - state.last_tick).count();
-    if (elapsed_ms >= kStilettoFallIntervalMs) {
-        state.grid.tick();
+    if (elapsed_ms >= kRainFallIntervalMs) {
+        rain_tick_active(state);
         state.last_tick = now;
     }
 
-    if (state.grid.ready()) {
+    if (rain_active_ready(state)) {
         Node *tex = state.scene.root.claim_child();
         tex->kind = NodeKind::Texture;
         tex->x = 0.0f;
         tex->y = 0.0f;
         tex->w = win_w;
         tex->h = win_h;
-        tex->tex = &state.grid.texture();
+        tex->tex = &rain_active_texture(state);
     }
 
     state.renderer->set_opacity(state.base.opacity);

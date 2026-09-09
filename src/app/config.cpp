@@ -265,6 +265,12 @@ Config load_config() {
             resonance.value("visualizerShape", std::string("bar")) == "sphere"
                 ? ResonanceVisualizerShape::Sphere
                 : ResonanceVisualizerShape::Bar;
+
+        nlohmann::json rain = j.value("rain", nlohmann::json::object());
+        cfg.rain.mode = rain.value("mode", std::string("matrix")) == "stiletto"
+                            ? RainMode::Stiletto
+                            : RainMode::Matrix;
+        cfg.rain.async_speed = rain.value("asyncSpeed", false);
     } catch (const nlohmann::json::exception &) {
     }
     return cfg;
@@ -346,6 +352,10 @@ void save_config(const Config &cfg) {
             ? "sphere"
             : "bar";
 
+    nlohmann::json rain;
+    rain["mode"] = cfg.rain.mode == RainMode::Stiletto ? "stiletto" : "matrix";
+    rain["asyncSpeed"] = cfg.rain.async_speed;
+
     nlohmann::json j;
     j["qixing"] = {{"autohideEnabled", cfg.autohide}};
     j["expanse"] = expanse;
@@ -353,6 +363,7 @@ void save_config(const Config &cfg) {
     j["starward"] = {{"animatedLogo", cfg.starward_animated_logo}};
     j["blink"] = blink;
     j["resonance"] = resonance;
+    j["rain"] = rain;
 
     if (!write_file_atomic(path, j.dump(2)))
         klog("config: failed to save %s", path.c_str());

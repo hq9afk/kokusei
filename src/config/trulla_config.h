@@ -18,7 +18,7 @@ enum class TrullaFieldId {
 };
 
 // tab count & labels
-constexpr int kTrullaTabCount = 5;
+constexpr int kTrullaTabCount = 6;
 
 inline constexpr const char *kTrullaDisplaysDefaultTag = "__default__";
 
@@ -169,5 +169,5 @@ struct TrullaTabDef {
 };
 
 inline constexpr const char *kTrullaTabLabels[kTrullaTabCount] = {
-    "Wallpaper", "Displays", "Idle", "Starward", "Resonance",
+    "Wallpaper", "Displays", "Idle", "Starward", "Resonance", "Rain",
 };

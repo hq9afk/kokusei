@@ -14,7 +14,7 @@ Description column is the verb's help text as printed by `kokusei help`.
 | dashboard | yuheng | `yuheng` | toggle the control center |
 | overview | liyue | `liyue` | toggle the overview (Hyprland only) |
 | settings | trulla | `trulla` | toggle the settings panel |
-| matrix | stiletto | `stiletto` | toggle the matrix rain overlay |
+| matrix | rain | `rain` | toggle the rain overlay (`matrix_rain` and `stiletto_rain` sims selectable in trulla's Rain tab) |
 | visualizer | resonance | `resonance` | toggle the audio visualizer overlay |
 | lock | penance | `penance` | lock the session |
 | idle | blink | — | no IPC verb (per-monitor module) |

@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "config/rain_config.h"
 #include "config/resonance_config.h"
 
 inline std::string default_expanse_dir() {
@@ -62,6 +63,7 @@ struct Config {
     uint32_t screensaver_timeout_seconds = 300;
 
     ResonanceParams resonance;
+    RainParams rain;
 };
 
 bool spark_effective_enabled(const Config &cfg,

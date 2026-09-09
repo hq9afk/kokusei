@@ -28,7 +28,7 @@
 
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
-enum class TrullaTab { Expanse, Displays, Blink, Starward, Resonance };
+enum class TrullaTab { Expanse, Displays, Blink, Starward, Resonance, Rain };
 
 class Renderer;
 struct WaylandState;
