@@ -9,3 +9,13 @@ visualizer/audio_gravity.frag
 visualizer/audio_average.frag
 visualizer/audio_smooth.frag
     Audio transform passes adapted from GLava by jarcode-foss. GPL-3.0.
+
+wallpaper/fade.frag
+wallpaper/wipe.frag
+wallpaper/disc.frag
+wallpaper/stripes.frag
+wallpaper/zoom.frag
+wallpaper/honeycomb.frag
+    Wallpaper cross-transition fragment shaders adapted from noctalia-shell's
+    wallpaper_program.cpp (fill-mode sampling reduced to CPU-supplied uv scale
+    and offset). noctalia-shell is MIT licensed.

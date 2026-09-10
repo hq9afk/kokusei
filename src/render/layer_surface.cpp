@@ -39,8 +39,10 @@ layer_surface_create(wl_surface *&out_surface, wl_compositor *compositor,
 
 void destroy_layer_surface(EGLDisplay display, wl_surface *&surface,
                            zwlr_layer_surface_v1 *&layer_surface,
-                           wl_egl_window *&egl_window,
-                           EGLSurface &egl_surface) {
+                           wl_egl_window *&egl_window, EGLSurface &egl_surface,
+                           FrameClock *frame_clock) {
+    if (frame_clock)
+        frame_clock_drop_callback(*frame_clock);
     if (egl_surface != EGL_NO_SURFACE) {
         eglDestroySurface(display, egl_surface);
         egl_surface = EGL_NO_SURFACE;

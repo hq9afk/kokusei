@@ -36,6 +36,8 @@ class Module {
     virtual wl_output *bound_output() const { return nullptr; }
     virtual void toggle_from_widget(WaylandState &) {}
 
+    virtual void on_output_removed(WaylandState &, wl_output *) {}
+
     virtual void apply_config(WaylandState &, const Config &) {}
 
     virtual void handle_click(WaylandState &, double, double) {}

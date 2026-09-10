@@ -2,7 +2,9 @@
 #include <GLES3/gl32.h>
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <memory>
+#include <random>
 #include <thread>
 
 #include "app/wayland_state.h"
@@ -14,6 +16,7 @@
 
 #include "modules/wallpaper.h"
 
+#include "render/animation.h"
 #include "render/gl.h"
 #include "render/layer_surface.h"
 #include "render/node.h"
@@ -72,6 +75,126 @@ void wallpaper_column_draw(const WallpaperColumn &col, Node *parent, float x,
     }
 }
 
+GLuint g_transition_prog[8] = {0};
+bool g_transition_tried = false;
+
+GLuint transition_program(WallpaperTransition kind) {
+    if (!g_transition_tried) {
+        g_transition_tried = true;
+        struct {
+            WallpaperTransition k;
+            const char *frag;
+            const char *tag;
+        } defs[] = {
+            {WallpaperTransition::Fade, "wallpaper/fade.frag", "wallpaper_fade"},
+            {WallpaperTransition::Wipe, "wallpaper/wipe.frag", "wallpaper_wipe"},
+            {WallpaperTransition::Disc, "wallpaper/disc.frag", "wallpaper_disc"},
+            {WallpaperTransition::Stripes, "wallpaper/stripes.frag",
+             "wallpaper_stripes"},
+            {WallpaperTransition::Zoom, "wallpaper/zoom.frag", "wallpaper_zoom"},
+            {WallpaperTransition::Honeycomb, "wallpaper/honeycomb.frag",
+             "wallpaper_honeycomb"},
+        };
+        for (auto &d : defs)
+            g_transition_prog[static_cast<int>(d.k)] = gl_compile_program_files(
+                "renderer/quad.vert", d.frag, d.tag);
+    }
+    int i = static_cast<int>(kind);
+    if (i < 0 || i >= 8)
+        return 0;
+    return g_transition_prog[i];
+}
+
+float rand_range(float lo, float hi) {
+    static std::mt19937 rng{std::random_device{}()};
+    return std::uniform_real_distribution<float>(lo, hi)(rng);
+}
+
+WallpaperTransition resolve_transition(WallpaperTransition kind) {
+    if (kind != WallpaperTransition::Random)
+        return kind;
+    int pick = std::min(5, static_cast<int>(rand_range(0.0f, 6.0f)));
+    return static_cast<WallpaperTransition>(
+        static_cast<int>(WallpaperTransition::Fade) + pick);
+}
+
+void transition_begin(WallpaperColumn &col, WallpaperTransition kind) {
+    col.transition_kind = resolve_transition(kind);
+    col.transition_start = std::chrono::steady_clock::now();
+    col.transitioning = true;
+    switch (col.transition_kind) {
+    case WallpaperTransition::Wipe:
+        col.tr_direction = std::floor(rand_range(0.0f, 4.0f));
+        break;
+    case WallpaperTransition::Disc:
+        col.tr_center_x = rand_range(0.2f, 0.8f);
+        col.tr_center_y = rand_range(0.2f, 0.8f);
+        break;
+    case WallpaperTransition::Stripes:
+        col.tr_stripe_count = std::round(rand_range(4.0f, 24.0f));
+        col.tr_angle = rand_range(0.0f, 360.0f);
+        break;
+    case WallpaperTransition::Honeycomb:
+        col.tr_cell_size = rand_range(0.02f, 0.06f);
+        col.tr_center_x = rand_range(0.2f, 0.8f);
+        col.tr_center_y = rand_range(0.2f, 0.8f);
+        break;
+    default:
+        break;
+    }
+}
+
+void transition_uv(FillMode mode, float col_w, float col_h, int tw, int th,
+                   float out[4]) {
+    float scale = mode == FillMode::Fit
+                      ? std::min(col_w / tw, col_h / th)
+                      : std::max(col_w / tw, col_h / th);
+    float draw_w = tw * scale;
+    float draw_h = th * scale;
+    out[0] = col_w / draw_w;
+    out[1] = col_h / draw_h;
+    out[2] = -((col_w - draw_w) / 2.0f) / draw_w;
+    out[3] = -((col_h - draw_h) / 2.0f) / draw_h;
+}
+
+void transition_render(Renderer &r, WallpaperColumn &col, float x, float y,
+                       float w, float h, float progress) {
+    GLuint prog = transition_program(col.transition_kind);
+    if (!prog || !col.tex.id || !col.tex_prev.id)
+        return;
+    float from_uv[4];
+    float to_uv[4];
+    transition_uv(col.mode, w, h, col.tex_prev.width, col.tex_prev.height,
+                  from_uv);
+    transition_uv(col.mode, w, h, col.tex.width, col.tex.height, to_uv);
+    const Color &fill = palette::base;
+    float aspect = h > 0.0f ? w / h : 1.0f;
+    r.draw_custom(prog, x, y, w, h, [&](GLuint p) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, col.tex_prev.id);
+        glUniform1i(glGetUniformLocation(p, "u_from"), 0);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, col.tex.id);
+        glUniform1i(glGetUniformLocation(p, "u_to"), 1);
+        glUniform4fv(glGetUniformLocation(p, "u_from_uv"), 1, from_uv);
+        glUniform4fv(glGetUniformLocation(p, "u_to_uv"), 1, to_uv);
+        glUniform4f(glGetUniformLocation(p, "u_fill"), fill.r, fill.g, fill.b,
+                    fill.a);
+        glUniform1f(glGetUniformLocation(p, "u_progress"), progress);
+        glUniform1f(glGetUniformLocation(p, "u_smoothness"),
+                    kWallpaperTransitionSmoothness);
+        glUniform1f(glGetUniformLocation(p, "u_direction"), col.tr_direction);
+        glUniform2f(glGetUniformLocation(p, "u_center"), col.tr_center_x,
+                    col.tr_center_y);
+        glUniform1f(glGetUniformLocation(p, "u_aspect"), aspect);
+        glUniform1f(glGetUniformLocation(p, "u_stripe_count"),
+                    col.tr_stripe_count);
+        glUniform1f(glGetUniformLocation(p, "u_angle"), col.tr_angle);
+        glUniform1f(glGetUniformLocation(p, "u_cell_size"), col.tr_cell_size);
+        glActiveTexture(GL_TEXTURE0);
+    });
+}
+
 void wallpaper_column_upload_pending(WallpaperColumn &col,
                                    const WallpaperColumnGl &gl) {
     if (!col.pending_pixels || gl.surface == EGL_NO_SURFACE)
@@ -79,6 +202,22 @@ void wallpaper_column_upload_pending(WallpaperColumn &col,
     auto t0 = std::chrono::steady_clock::now();
     column_make_current(gl);
     bool animated = col.decode.stop_flag != nullptr;
+    if (col.pending_transition != WallpaperTransition::None && col.tex.id) {
+        Texture fresh = make_texture_rgba(col.pending_width, col.pending_height,
+                                          col.pending_pixels, true,
+                                          col.pending_stride);
+        if (fresh.id) {
+            col.tex_prev = std::move(col.tex);
+            col.tex = std::move(fresh);
+            transition_begin(col, col.pending_transition);
+        }
+        col.pending_transition = WallpaperTransition::None;
+        delete[] col.pending_pixels;
+        col.pending_pixels = nullptr;
+        if (gl.request_frame)
+            gl.request_frame();
+        return;
+    }
     update_texture_rgba(col.tex, col.pending_width, col.pending_height,
                         col.pending_pixels, !animated, col.pending_stride);
     delete[] col.pending_pixels;
@@ -105,10 +244,14 @@ void wallpaper_column_clear(WallpaperColumn &col, const WallpaperColumnGl &gl) {
         media_decode_release_drm_frame(col.pinned_frame_prev);
         col.pinned_frame_prev = nullptr;
     }
-    if ((col.video_tex.tex || col.tex.id) && gl.surface != EGL_NO_SURFACE)
+    if ((col.video_tex.tex || col.tex.id || col.tex_prev.id) &&
+        gl.surface != EGL_NO_SURFACE)
         column_make_current(gl);
     col.video_tex.reset();
     col.tex.reset();
+    col.tex_prev.reset();
+    col.transitioning = false;
+    col.pending_transition = WallpaperTransition::None;
     col.zero_copy = false;
     delete[] col.pending_pixels;
     col.pending_pixels = nullptr;
@@ -119,17 +262,29 @@ void wallpaper_column_clear(WallpaperColumn &col, const WallpaperColumnGl &gl) {
 
 void wallpaper_column_set_static(WallpaperColumn &col, const WallpaperColumnGl &gl,
                                const std::string &path, int target_w,
-                               int target_h, FillMode mode) {
+                               int target_h, FillMode mode,
+                               WallpaperTransition transition) {
+    if (col.path == path && col.mode == mode && col.target_w == target_w &&
+        col.target_h == target_h && col.tex.id)
+        return;
+    col.pending_transition =
+        col.tex.id ? transition : WallpaperTransition::None;
     col.path = path;
     col.mode = mode;
     col.target_w = target_w;
     col.target_h = target_h;
     uint64_t gen = ++col.generation;
-    std::thread([&col, &gl, path, gen, target_w, target_h] {
+    std::weak_ptr<int> life = col.life;
+    std::thread([&col, &gl, path, gen, target_w, target_h, life] {
         int w = 0, h = 0;
         unsigned char *data =
             animate_decode_scaled(path, target_w, target_h, w, h);
-        DeferredCall::call_later([&col, &gl, data, w, h, gen] {
+        DeferredCall::call_later([&col, &gl, data, w, h, gen, life] {
+            auto keep = life.lock();
+            if (!keep) {
+                delete[] data;
+                return;
+            }
             if (gen != col.generation) {
                 delete[] data;
                 return;
@@ -157,6 +312,7 @@ void wallpaper_column_set_animated(WallpaperColumn &col, const WallpaperColumnGl
     if (target_w <= 0 || target_h <= 0)
         return;
     uint64_t gen = ++col.generation;
+    std::weak_ptr<int> life = col.life;
 
     klog("wallpaper: animated column start '%s' zero_copy_supported=%d "
          "surface=%d",
@@ -167,8 +323,15 @@ void wallpaper_column_set_animated(WallpaperColumn &col, const WallpaperColumnGl
 
     col.decode = media_decode_stream(
         path, filter, kAnimateWallpaperFps, texture_row_length_supported(),
-        [&col, &gl, gen](unsigned char *rgba, int w, int h, int stride_px) {
-            DeferredCall::call_later([&col, &gl, rgba, w, h, stride_px, gen] {
+        [&col, &gl, gen, life](unsigned char *rgba, int w, int h,
+                               int stride_px) {
+            DeferredCall::call_later([&col, &gl, rgba, w, h, stride_px, gen,
+                                     life] {
+                auto keep = life.lock();
+                if (!keep) {
+                    delete[] rgba;
+                    return;
+                }
                 if (gen != col.generation) {
                     delete[] rgba;
                     return;
@@ -182,9 +345,14 @@ void wallpaper_column_set_animated(WallpaperColumn &col, const WallpaperColumnGl
             });
         },
         video_texture_import_supported()
-            ? MediaDecodeDrmFrameCallback([&col, &gl,
-                                           gen](MediaDrmFrame frame) {
-                  DeferredCall::call_later([&col, &gl, frame, gen] {
+            ? MediaDecodeDrmFrameCallback([&col, &gl, gen,
+                                           life](MediaDrmFrame frame) {
+                  DeferredCall::call_later([&col, &gl, frame, gen, life] {
+                      auto keep = life.lock();
+                      if (!keep) {
+                          media_decode_release_drm_frame(frame.avframe_handle);
+                          return;
+                      }
                       if (gen != col.generation ||
                           gl.surface == EGL_NO_SURFACE) {
                           media_decode_release_drm_frame(frame.avframe_handle);
@@ -262,6 +430,37 @@ constexpr zwlr_layer_surface_v1_listener wallpaper_layer_surface_listener = {
     .closed = wallpaper_layer_surface_closed,
 };
 
+void wallpaper_draw_transitions(WallpaperState &wp) {
+    if (wp.columns.empty())
+        return;
+    auto now = std::chrono::steady_clock::now();
+    size_t ncol = std::max<size_t>(wp.columns.size(), 1);
+    float column_w = static_cast<float>(wp.width) / static_cast<float>(ncol);
+    bool any = false;
+    for (size_t i = 0; i < wp.columns.size(); ++i) {
+        auto &slot = wp.columns[i];
+        if (!slot || !slot->transitioning)
+            continue;
+        WallpaperColumn &col = *slot;
+        float raw = std::chrono::duration<float, std::milli>(
+                        now - col.transition_start)
+                        .count() /
+                    kWallpaperTransitionDurationMs;
+        if (raw >= 1.0f || col.transition_kind == WallpaperTransition::None) {
+            col.tex_prev.reset();
+            col.transitioning = false;
+            continue;
+        }
+        any = true;
+        transition_render(*wp.renderer, col,
+                          static_cast<float>(i) * column_w, 0.0f, column_w,
+                          static_cast<float>(wp.height),
+                          applyEasing(Easing::EaseInOutCubic, raw));
+    }
+    if (any)
+        wallpaper_request_frame(wp);
+}
+
 void wallpaper_paint(WallpaperState &wp) {
     if (wp.egl_surface == EGL_NO_SURFACE)
         return;
@@ -285,6 +484,7 @@ void wallpaper_paint(WallpaperState &wp) {
     wp.scene.rebuild();
     wallpaper_draw_columns(wp, &wp.scene.root, wp.width, wp.height);
     wp.scene.draw(*wp.renderer);
+    wallpaper_draw_transitions(wp);
     gl_check("wallpaper_paint");
 
     auto sw0 = std::chrono::steady_clock::now();
@@ -463,7 +663,8 @@ void wallpaper_sync_from_config(WallpaperState &wp, const Config &cfg,
                 continue;
             wallpaper_column_set_animated(col, wp.gl, path, sz.w, sz.h, mode);
         } else {
-            wallpaper_column_set_static(col, wp.gl, path, sz.w, sz.h, mode);
+            wallpaper_column_set_static(col, wp.gl, path, sz.w, sz.h, mode,
+                                        cfg.wallpaper_transition);
         }
     }
 }

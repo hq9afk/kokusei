@@ -39,12 +39,15 @@ struct SettingsState {
     OverlayPanelBase base;
     Renderer *renderer = nullptr;
     Scene scene;
+    Scene tab_scene;
     TextureCache tcache;
 
     Rect panel_rect;
     std::vector<PanelClickRegion> click_regions;
 
     SettingsTab active_tab = SettingsTab::Wallpaper;
+    SettingsTab pending_tab = SettingsTab::Wallpaper;
+    float tab_alpha = 1.0f;
     SettingsFieldId focused_field = SettingsFieldId::None;
     TextFieldState field_buffer;
     TextFieldTypeAnim field_anim;

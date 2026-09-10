@@ -1,6 +1,7 @@
 #pragma once
 
 #include <EGL/egl.h>
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -53,6 +54,20 @@ struct WallpaperColumn {
 
     int target_w = 0;
     int target_h = 0;
+
+    std::shared_ptr<int> life = std::make_shared<int>(0);
+
+    Texture tex_prev;
+    WallpaperTransition pending_transition = WallpaperTransition::None;
+    bool transitioning = false;
+    WallpaperTransition transition_kind = WallpaperTransition::None;
+    std::chrono::steady_clock::time_point transition_start{};
+    float tr_direction = 0.0f;
+    float tr_center_x = 0.5f;
+    float tr_center_y = 0.5f;
+    float tr_stripe_count = 12.0f;
+    float tr_angle = 30.0f;
+    float tr_cell_size = 0.04f;
 
     WallpaperColumn() = default;
     WallpaperColumn(const WallpaperColumn &) = delete;

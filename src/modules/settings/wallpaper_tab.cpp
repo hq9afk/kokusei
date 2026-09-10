@@ -522,6 +522,49 @@ float draw_wallpaper_decode_warning(SettingsState &state, Node *parent,
     return row_h;
 }
 
+const char *transition_label(WallpaperTransition t) {
+    switch (t) {
+    case WallpaperTransition::None:
+        return "Off";
+    case WallpaperTransition::Fade:
+        return "Fade";
+    case WallpaperTransition::Wipe:
+        return "Wipe";
+    case WallpaperTransition::Disc:
+        return "Disc";
+    case WallpaperTransition::Stripes:
+        return "Stripes";
+    case WallpaperTransition::Zoom:
+        return "Zoom";
+    case WallpaperTransition::Honeycomb:
+        return "Honeycomb";
+    case WallpaperTransition::Random:
+        return "Random";
+    }
+    return "Fade";
+}
+
+void draw_transition_row(SettingsState &state, Node *parent, int32_t scale,
+                         float x, float y, float w, const Config &cfg) {
+    float row_h = kSettingsToggleTileHeight;
+    float inset = kSettingsToggleTileContentMargin;
+    node_add_rrect(parent, x, y, w, row_h, kSettingsTileRadius,
+                   kSettingsToggleTileBorderWidth, rgba(palette::text_alpha04),
+                   rgba(palette::text_alpha07));
+    const Texture *label = cached_text(state.tcache, "Transition", scale);
+    if (label)
+        node_add_texture(parent, x + inset, y + (row_h - label->height) / 2.0f,
+                         *label, rgba(palette::text_alpha85));
+    const Texture *value = cached_text(
+        state.tcache, transition_label(cfg.wallpaper_transition), scale);
+    if (value)
+        node_add_texture(parent, x + w - inset - value->width,
+                         y + (row_h - value->height) / 2.0f, *value,
+                         rgba(palette::accent_alt));
+    state.click_regions.push_back(
+        {PanelClickKind::ToggleFlip, {x, y, w, row_h}, "wallpapertransition"});
+}
+
 } // namespace
 
 float wallpaper_tab_paint(SettingsState &state, Node *root, int32_t scale, float x,
@@ -545,6 +588,8 @@ float wallpaper_tab_paint(SettingsState &state, Node *root, int32_t scale, float
     draw_toggle_row(state, root, scale, x, y, sub.grid_width,
                     "Enable animated wallpaper", cfg.wallpaper_animated_enabled,
                     "enableanimatedwallpaper", true);
+    y += kSettingsToggleTileHeight + kPanelRowGap;
+    draw_transition_row(state, root, scale, x, y, sub.grid_width, cfg);
     y += kSettingsToggleTileHeight + kPanelRowGap;
     draw_region_row(state, root, scale, x, y, sub.grid_width, cfg, sub,
                     animated);
@@ -618,6 +663,15 @@ bool wallpaper_tab_handle_click(SettingsState &state, const Config &cfg,
     if (region.tag == "usedefaultwallpaper") {
         Config updated = cfg;
         updated.default_wallpaper_enabled = !cfg.default_wallpaper_enabled;
+        on_commit(updated);
+        settings_request_frame(state);
+        return true;
+    }
+    if (region.tag == "wallpapertransition") {
+        Config updated = cfg;
+        updated.wallpaper_transition = static_cast<WallpaperTransition>(
+            (static_cast<int>(cfg.wallpaper_transition) + 1) %
+            (static_cast<int>(WallpaperTransition::Random) + 1));
         on_commit(updated);
         settings_request_frame(state);
         return true;

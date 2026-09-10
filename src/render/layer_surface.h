@@ -5,6 +5,8 @@
 #include <wayland-client.h>
 #include <wayland-egl.h>
 
+#include "service/frame_service.h"
+
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 struct LayerSurfaceConfig {
@@ -30,4 +32,5 @@ layer_surface_create(wl_surface *&out_surface, wl_compositor *compositor,
 
 void destroy_layer_surface(EGLDisplay display, wl_surface *&surface,
                            zwlr_layer_surface_v1 *&layer_surface,
-                           wl_egl_window *&egl_window, EGLSurface &egl_surface);
+                           wl_egl_window *&egl_window, EGLSurface &egl_surface,
+                           FrameClock *frame_clock = nullptr);

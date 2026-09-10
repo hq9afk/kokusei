@@ -561,34 +561,15 @@ void BarPerMonitorModule::text_input_deactivated(TextInputService &) {
 void BarPerMonitorModule::destroy(WaylandState &app, MonitorOutput &mon) {
     EGLDisplay d = app.egl_display;
     destroy_layer_surface(d, mon.surface, mon.layer_surface, mon.egl_window,
-                          mon.egl_surface);
-    destroy_layer_surface(d, state.network_panel.base.surface,
-                          state.network_panel.base.layer_surface,
-                          state.network_panel.base.egl_window,
-                          state.network_panel.base.egl_surface);
-    destroy_layer_surface(d, state.bluetooth_panel.base.surface,
-                          state.bluetooth_panel.base.layer_surface,
-                          state.bluetooth_panel.base.egl_window,
-                          state.bluetooth_panel.base.egl_surface);
-    destroy_layer_surface(d, state.volume_panel.base.surface,
-                          state.volume_panel.base.layer_surface,
-                          state.volume_panel.base.egl_window,
-                          state.volume_panel.base.egl_surface);
-    destroy_layer_surface(
-        d, state.tray_panel.base.surface, state.tray_panel.base.layer_surface,
-        state.tray_panel.base.egl_window, state.tray_panel.base.egl_surface);
+                          mon.egl_surface, &mon.frame_clock);
+    overlay_panel_destroy_surface(state.network_panel.base);
+    overlay_panel_destroy_surface(state.bluetooth_panel.base);
+    overlay_panel_destroy_surface(state.volume_panel.base);
+    overlay_panel_destroy_surface(state.tray_panel.base);
     popup_window_destroy(state.tray_menu.base);
-    destroy_layer_surface(d, state.battery_panel.base.surface,
-                          state.battery_panel.base.layer_surface,
-                          state.battery_panel.base.egl_window,
-                          state.battery_panel.base.egl_surface);
-    destroy_layer_surface(d, state.system_monitor_panel.base.surface,
-                          state.system_monitor_panel.base.layer_surface,
-                          state.system_monitor_panel.base.egl_window,
-                          state.system_monitor_panel.base.egl_surface);
-    destroy_layer_surface(
-        d, state.clock_panel.base.surface, state.clock_panel.base.layer_surface,
-        state.clock_panel.base.egl_window, state.clock_panel.base.egl_surface);
+    overlay_panel_destroy_surface(state.battery_panel.base);
+    overlay_panel_destroy_surface(state.system_monitor_panel.base);
+    overlay_panel_destroy_surface(state.clock_panel.base);
 }
 
 bool BarPerMonitorModule::owns_surface(wl_surface *surface) const {

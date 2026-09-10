@@ -53,6 +53,18 @@ void overlay_panel_toggle(OverlayPanelBase &base);
 
 void overlay_panel_destroy_surface(OverlayPanelBase &base);
 
+inline void overlay_panel_release_output(OverlayPanelBase &base,
+                                         wl_output *&bound_output,
+                                         wl_output *removed) {
+    if (!removed || bound_output != removed)
+        return;
+    overlay_panel_destroy_surface(base);
+    base.open = false;
+    base.opacity = 0.0f;
+    base.animations = {};
+    bound_output = nullptr;
+}
+
 struct PanelHeightReveal {
     float visible_height = -1.0f;
     float target = -1.0f;

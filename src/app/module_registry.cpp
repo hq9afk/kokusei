@@ -107,6 +107,18 @@ class LauncherModule final : public Module, public TextInputClient {
         launcher_handle_key_event(state_, event);
     }
 
+    void on_output_removed(WaylandState &, wl_output *out) override {
+        if (!out || state_.bound_output != out)
+            return;
+        if (state_.sync_text_input_focus)
+            state_.sync_text_input_focus(false);
+        launcher_destroy_surface(state_);
+        state_.open = false;
+        state_.opacity = 0.0f;
+        state_.animations = {};
+        state_.bound_output = nullptr;
+    }
+
     std::vector<IpcHandler> ipc_handlers(WaylandState &app) override {
         auto toggle_retargeted = [this, &app](bool global) {
             if (!state_.open) {
@@ -210,6 +222,12 @@ class LogoutModule final : public Module {
 
     bool opened_by_widget() const override { return state_.opened_by_widget; }
     wl_output *bound_output() const override { return state_.bound_output; }
+    void on_output_removed(WaylandState &, wl_output *out) override {
+        if (state_.bound_output != out)
+            return;
+        overlay_panel_release_output(state_.base, state_.bound_output, out);
+        state_.opened_by_widget = false;
+    }
     void toggle_from_widget(WaylandState &app) override {
         if (!state_.base.open) {
             MonitorOutput *target = app_detail::active_target_monitor(app);
@@ -313,6 +331,12 @@ class DashboardModule final : public Module {
 
     bool opened_by_widget() const override { return state_.opened_by_widget; }
     wl_output *bound_output() const override { return state_.bound_output; }
+    void on_output_removed(WaylandState &, wl_output *out) override {
+        if (state_.bound_output != out)
+            return;
+        overlay_panel_release_output(state_.base, state_.bound_output, out);
+        state_.opened_by_widget = false;
+    }
     void toggle_from_widget(WaylandState &app) override {
         if (!state_.base.open) {
             MonitorOutput *target = app_detail::active_target_monitor(app);
@@ -408,6 +432,12 @@ class OverviewModule final : public Module {
     }
 
     bool opened_by_widget() const override { return state_.opened_by_widget; }
+    void on_output_removed(WaylandState &, wl_output *out) override {
+        if (state_.bound_output != out)
+            return;
+        overlay_panel_release_output(state_.base, state_.bound_output, out);
+        state_.opened_by_widget = false;
+    }
     void toggle_from_widget(WaylandState &app) override {
         if (!state_.base.open) {
             MonitorOutput *target = app_detail::active_target_monitor(app);
@@ -434,6 +464,18 @@ class SettingsModule final : public Module, public TextInputClient {
   public:
     const char *name() const override { return "settings"; }
     bool is_open() const override { return state_.base.open; }
+
+    void on_output_removed(WaylandState &app, wl_output *out) override {
+        if (!out || app.settings_bound_output != out)
+            return;
+        if (state_.sync_text_input_focus)
+            state_.sync_text_input_focus(false);
+        wl_output *bound = app.settings_bound_output;
+        overlay_panel_release_output(state_.base, bound, out);
+        app.settings_bound_output = nullptr;
+        app.settings_enabled = false;
+        state_.focused_field = SettingsFieldId::None;
+    }
 
     bool create_surface(WaylandState &app, wl_output *output) override {
         output_ = output;
@@ -733,7 +775,8 @@ bool DockPerMonitorModule::init_egl(WaylandState &app, MonitorOutput &mon) {
 
 void DockPerMonitorModule::destroy(WaylandState &app, MonitorOutput &) {
     destroy_layer_surface(app.egl_display, state_.surface, state_.layer_surface,
-                          state_.egl_window, state_.egl_surface);
+                          state_.egl_window, state_.egl_surface,
+                          &state_.frame_clock);
 }
 
 bool DockPerMonitorModule::owns_surface(wl_surface *surface) const {
@@ -765,7 +808,8 @@ bool OsdPerMonitorModule::init_egl(WaylandState &app, MonitorOutput &mon) {
 
 void OsdPerMonitorModule::destroy(WaylandState &app, MonitorOutput &) {
     destroy_layer_surface(app.egl_display, state_.surface, state_.layer_surface,
-                          state_.egl_window, state_.egl_surface);
+                          state_.egl_window, state_.egl_surface,
+                          &state_.frame_clock);
 }
 
 bool OsdPerMonitorModule::owns_surface(wl_surface *surface) const {
@@ -816,7 +860,8 @@ bool WallpaperPerMonitorModule::init_egl(WaylandState &app,
 void WallpaperPerMonitorModule::destroy(WaylandState &app, MonitorOutput &) {
     wallpaper_columns_stop_all(state_);
     destroy_layer_surface(app.egl_display, state_.surface, state_.layer_surface,
-                          state_.egl_window, state_.egl_surface);
+                          state_.egl_window, state_.egl_surface,
+                          &state_.frame_clock);
 }
 
 bool WallpaperPerMonitorModule::owns_surface(wl_surface *surface) const {
@@ -873,7 +918,8 @@ bool NotificationViewPerMonitorModule::init_egl(WaylandState &app,
 void NotificationViewPerMonitorModule::destroy(WaylandState &app,
                                                MonitorOutput &) {
     destroy_layer_surface(app.egl_display, state_.surface, state_.layer_surface,
-                          state_.egl_window, state_.egl_surface);
+                          state_.egl_window, state_.egl_surface,
+                          &state_.frame_clock);
 }
 
 bool NotificationViewPerMonitorModule::owns_surface(wl_surface *surface) const {
@@ -927,7 +973,7 @@ void NotificationViewPerMonitorModule::resync(WaylandState &app,
     } else if (!want && have) {
         destroy_layer_surface(app.egl_display, state_.surface,
                               state_.layer_surface, state_.egl_window,
-                              state_.egl_surface);
+                              state_.egl_surface, &state_.frame_clock);
         state_.configured = false;
     }
 }
@@ -968,7 +1014,8 @@ bool IdlePerMonitorModule::init_egl(WaylandState &app, MonitorOutput &mon) {
 
 void IdlePerMonitorModule::destroy(WaylandState &app, MonitorOutput &) {
     destroy_layer_surface(app.egl_display, state_.surface, state_.layer_surface,
-                          state_.egl_window, state_.egl_surface);
+                          state_.egl_window, state_.egl_surface,
+                          &state_.frame_clock);
 }
 
 bool IdlePerMonitorModule::owns_surface(wl_surface *surface) const {

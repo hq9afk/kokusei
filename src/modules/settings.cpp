@@ -141,6 +141,9 @@ void settings_toggle(SettingsState &state, const Config &cfg,
         settings_commit_focused_field(state, cfg, on_commit);
     } else {
         state.active_tab = SettingsTab::Wallpaper;
+        state.pending_tab = SettingsTab::Wallpaper;
+        state.base.animations.cancelForOwner(kSettingsTabFadeOwner);
+        state.tab_alpha = 1.0f;
     }
     overlay_panel_toggle(state.base);
     if (opening)
@@ -209,11 +212,29 @@ void settings_handle_click(SettingsState &state, const Config &cfg,
         case PanelClickKind::Close:
             settings_toggle(state, cfg, on_commit);
             return;
-        case PanelClickKind::TabSelect:
+        case PanelClickKind::TabSelect: {
             settings_commit_focused_field(state, cfg, on_commit);
-            state.active_tab = static_cast<SettingsTab>(std::stoi(region.tag));
+            SettingsTab target =
+                static_cast<SettingsTab>(std::stoi(region.tag));
+            if (target != state.active_tab) {
+                state.pending_tab = target;
+                state.base.animations.cancelForOwner(kSettingsTabFadeOwner);
+                state.base.animations.animate(
+                    state.tab_alpha, 0.0f, kSettingsTabFadeMs,
+                    Easing::EaseOutCubic,
+                    [&state](float v) { state.tab_alpha = v; },
+                    [&state] {
+                        state.active_tab = state.pending_tab;
+                        state.base.animations.animate(
+                            0.0f, 1.0f, kSettingsTabFadeMs, Easing::EaseOutCubic,
+                            [&state](float v) { state.tab_alpha = v; }, {},
+                            kSettingsTabFadeOwner);
+                    },
+                    kSettingsTabFadeOwner);
+            }
             settings_request_frame(state);
             return;
+        }
         case PanelClickKind::ToggleFlip:
             if (!wallpaper_tab_handle_click(state, cfg, on_commit, region) &&
                 !displays_tab_handle_click(state, cfg, on_commit, region) &&
@@ -473,13 +494,14 @@ void settings_paint(SettingsState &state, const Config &cfg,
                     state.base.egl_context);
     int32_t scale = state.base.output_scale.scale;
     state.renderer->begin_frame(state.base.width, state.base.height, scale);
-    state.renderer->set_opacity(state.base.opacity);
     glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT);
 
     state.scene.rebuild();
+    state.tab_scene.rebuild();
     state.click_regions.clear();
     Node *root = &state.scene.root;
+    Node *tab_root = &state.tab_scene.root;
 
     if (state.base.opacity > 0.0f) {
         float panel_w = std::min(static_cast<float>(state.base.width) -
@@ -526,37 +548,40 @@ void settings_paint(SettingsState &state, const Config &cfg,
 
         switch (state.active_tab) {
         case SettingsTab::Wallpaper:
-            wallpaper_tab_paint(state, root, scale, label_x, y, cfg);
+            wallpaper_tab_paint(state, tab_root, scale, label_x, y, cfg);
             break;
         case SettingsTab::Displays: {
             float row_w = panel_x + panel_w - kPanelPadding - label_x;
-            displays_tab_paint(state, root, scale, label_x, y, row_w, cfg);
+            displays_tab_paint(state, tab_root, scale, label_x, y, row_w, cfg);
             break;
         }
         case SettingsTab::Idle: {
             float row_w = panel_x + panel_w - kPanelPadding - label_x;
-            idle_tab_paint(state, root, scale, label_x, y, row_w, cfg);
+            idle_tab_paint(state, tab_root, scale, label_x, y, row_w, cfg);
             break;
         }
         case SettingsTab::Logout: {
             float row_w = panel_x + panel_w - kPanelPadding - label_x;
-            logout_tab_paint(state, root, scale, label_x, y, row_w, cfg);
+            logout_tab_paint(state, tab_root, scale, label_x, y, row_w, cfg);
             break;
         }
         case SettingsTab::Visualizer: {
             float row_w = panel_x + panel_w - kPanelPadding - label_x;
-            visualizer_tab_paint(state, root, scale, label_x, y, row_w, cfg);
+            visualizer_tab_paint(state, tab_root, scale, label_x, y, row_w, cfg);
             break;
         }
         case SettingsTab::Rain: {
             float row_w = panel_x + panel_w - kPanelPadding - label_x;
-            rain_tab_paint(state, root, scale, label_x, y, row_w, cfg);
+            rain_tab_paint(state, tab_root, scale, label_x, y, row_w, cfg);
             break;
         }
         }
     }
 
+    state.renderer->set_opacity(state.base.opacity);
     state.scene.draw(*state.renderer);
+    state.renderer->set_opacity(state.base.opacity * state.tab_alpha);
+    state.tab_scene.draw(*state.renderer);
     if (state.base.animations.hasActive() ||
         animated_image_animating(state.profile_pic))
         overlay_panel_request_frame(state.base);

@@ -49,7 +49,10 @@ constexpr float kSettingsNumberFieldWidth = 72.0f;
 // toggle animation owners
 constexpr uint64_t kSettingsAutohideToggleOwner = 3;
 constexpr uint64_t kSettingsFillModeToggleOwner = 4;
+constexpr uint64_t kSettingsTabFadeOwner = 20;
 constexpr uint64_t kSettingsFieldTypeAnimOwnerBase = 10000;
+
+constexpr float kSettingsTabFadeMs = 90.0f;
 
 // wallpaper thumbnail grid
 constexpr float kSettingsWallpaperThumbSize = 115.0f;

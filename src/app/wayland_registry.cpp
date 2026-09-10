@@ -144,7 +144,10 @@ void registry_global_remove(void *data, wl_registry *, uint32_t name) {
     if (it == state->outputs.end())
         return;
     klog("output: '%s' removed", (*it)->output.name.c_str());
-    lock_notify_output_removed(*state, (*it)->output.wl);
+    wl_output *removed_wl = (*it)->output.wl;
+    lock_notify_output_removed(*state, removed_wl);
+    for (auto &m : state->overlays)
+        m->on_output_removed(*state, removed_wl);
     if (state->last_pointer_monitor == it->get())
         state->last_pointer_monitor = nullptr;
     monitor_output_destroy(**it);
