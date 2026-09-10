@@ -3,7 +3,7 @@
 void test_config();
 void test_config_watch();
 void test_monitor_overrides();
-void test_expanse_resolve();
+void test_wallpaper_resolve();
 void test_async_process();
 void test_deferred_call();
 void test_path_home();
@@ -32,5 +32,5 @@ void test_marquee_scroll();
 void test_palette();
 void test_image_decode();
 void test_text_elide();
-void test_penance_layout();
-void test_resonance_fft();
+void test_lock_layout();
+void test_visualizer_fft();

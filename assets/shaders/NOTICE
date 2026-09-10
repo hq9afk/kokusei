@@ -1,11 +1,11 @@
 Third-party shader code bundled here:
 
-resonance/sphere/lygia_pnoise.glsl
+visualizer/sphere/lygia_pnoise.glsl
     Classic Perlin noise (pnoise) from lygia / webgl-noise.
     Copyright (c) Ian McEwan, Stefan Gustavson, Ashima Arts. MIT license.
 
-resonance/audio_pass.frag
-resonance/audio_gravity.frag
-resonance/audio_average.frag
-resonance/audio_smooth.frag
+visualizer/audio_pass.frag
+visualizer/audio_gravity.frag
+visualizer/audio_average.frag
+visualizer/audio_smooth.frag
     Audio transform passes adapted from GLava by jarcode-foss. GPL-3.0.

@@ -6,20 +6,20 @@
 #include "app/text_input_client.h"
 #include "app/wayland_state.h"
 
-#include "config/qixing_config.h"
+#include "config/bar_config.h"
 
-#include "modules/expanse.h"
-#include "modules/herald.h"
-#include "modules/liyue.h"
-#include "modules/overseer.h"
-#include "modules/penance.h"
-#include "modules/qixing.h"
+#include "modules/wallpaper.h"
+#include "modules/notification.h"
+#include "modules/overview.h"
+#include "modules/launcher.h"
+#include "modules/lock.h"
+#include "modules/bar.h"
 #include "modules/rain.h"
-#include "modules/resonance.h"
-#include "modules/spark.h"
-#include "modules/starward.h"
-#include "modules/trulla.h"
-#include "modules/yuheng.h"
+#include "modules/visualizer.h"
+#include "modules/osd.h"
+#include "modules/logout.h"
+#include "modules/settings.h"
+#include "modules/dashboard.h"
 
 #include "render/animated_image.h"
 #include "render/image.h"
@@ -31,20 +31,20 @@
 
 namespace {
 
-class OverseerModule final : public Module, public TextInputClient {
+class LauncherModule final : public Module, public TextInputClient {
   public:
-    const char *name() const override { return "overseer"; }
+    const char *name() const override { return "launcher"; }
     bool is_open() const override { return state_.open; }
 
     bool create_surface(WaylandState &app, wl_output *output) override {
         output_ = output;
-        want_ = overseer_create_surface(state_, app.compositor, app.layer_shell,
+        want_ = launcher_create_surface(state_, app.compositor, app.layer_shell,
                                         output);
         return want_;
     }
 
     bool init_egl(WaylandState &app) override {
-        if (!overseer_init_egl(state_, app.renderer, app.egl_display,
+        if (!launcher_init_egl(state_, app.renderer, app.egl_display,
                                app.egl_config, app.egl_context))
             return false;
         state_.bound_output = output_;
@@ -59,10 +59,10 @@ class OverseerModule final : public Module, public TextInputClient {
     }
 
     TextInputState text_input_state() const override {
-        return overseer_text_input_state(state_);
+        return launcher_text_input_state(state_);
     }
     void text_input_apply_edit(const TextInputEdit &edit) override {
-        overseer_text_input_apply_edit(state_, edit);
+        launcher_text_input_apply_edit(state_, edit);
         request_frame();
     }
     void text_input_reset_preedit() override {
@@ -76,35 +76,35 @@ class OverseerModule final : public Module, public TextInputClient {
 
     bool configured() const override { return !want_ || state_.configured; }
     wl_surface *surface() const override { return state_.surface; }
-    void request_frame() override { overseer_request_frame(state_); }
+    void request_frame() override { launcher_request_frame(state_); }
 
     bool tick() override {
-        overseer_search_start_pending(state_);
-        return overseer_tick(state_);
+        launcher_search_start_pending(state_);
+        return launcher_tick(state_);
     }
     int poll_timeout_ms() const override {
-        return overseer_poll_timeout_ms(state_);
+        return launcher_poll_timeout_ms(state_);
     }
     bool timer_tick(WaylandState &) override {
         if (!state_.open)
             return false;
-        text_field_blink_toggle(state_.search);
+        text_field_idle_toggle(state_.search);
         request_frame();
         return true;
     }
 
     void handle_click(WaylandState &, double x, double y) override {
-        overseer_handle_click(state_, x, y);
+        launcher_handle_click(state_, x, y);
     }
     void handle_pointer_move(WaylandState &, wl_surface *focused_surface,
                              double x, double y) override {
-        overseer_handle_pointer_move(state_, focused_surface, x, y);
+        launcher_handle_pointer_move(state_, focused_surface, x, y);
     }
     bool wants_pointing_hand_cursor() const override {
         return state_.open && state_.hovered_index >= 0;
     }
     void handle_key_event(WaylandState &, const KeyEvent &event) override {
-        overseer_handle_key_event(state_, event);
+        launcher_handle_key_event(state_, event);
     }
 
     std::vector<IpcHandler> ipc_handlers(WaylandState &app) override {
@@ -113,20 +113,20 @@ class OverseerModule final : public Module, public TextInputClient {
                 MonitorOutput *target = app_detail::active_target_monitor(app);
                 if (target && (target->output.wl != state_.bound_output ||
                                !state_.layer_surface))
-                    overseer_retarget(state_, app.compositor, app.layer_shell,
+                    launcher_retarget(state_, app.compositor, app.layer_shell,
                                       app.display, app.renderer,
                                       app.egl_display, app.egl_config,
                                       app.egl_context, target->output.wl,
                                       target->output.name.c_str());
             }
-            overseer_toggle(state_, global);
+            launcher_toggle(state_, global);
         };
         return {
-            {"overseer", [toggle_retargeted] { toggle_retargeted(false); },
-             "toggle the overseer, searching from $HOME"},
-            {"overseer global",
+            {"launcher", [toggle_retargeted] { toggle_retargeted(false); },
+             "toggle the launcher, searching from $HOME"},
+            {"launcher global",
              [toggle_retargeted] { toggle_retargeted(true); },
-             "toggle the overseer, searching from /"},
+             "toggle the launcher, searching from /"},
         };
     }
 
@@ -134,7 +134,7 @@ class OverseerModule final : public Module, public TextInputClient {
     extra_poll_sources(WaylandState &app) override {
         std::vector<std::pair<int, std::function<void()>>> sources;
         auto dispatch = [this, &app] {
-            if (overseer_search_poll(state_)) {
+            if (launcher_search_poll(state_)) {
                 request_frame();
                 app_detail::rest_egl_current(app);
             }
@@ -147,31 +147,31 @@ class OverseerModule final : public Module, public TextInputClient {
     }
 
   private:
-    OverseerState state_;
+    LauncherState state_;
     wl_output *output_ = nullptr;
     bool want_ = false;
 };
 
-class StarwardModule final : public Module {
+class LogoutModule final : public Module {
   public:
-    const char *name() const override { return "starward"; }
+    const char *name() const override { return "logout"; }
     bool is_open() const override { return state_.base.open; }
 
     bool create_surface(WaylandState &app, wl_output *output) override {
         output_ = output;
-        want_ = starward_create_surface(state_, app.compositor, app.layer_shell,
+        want_ = logout_create_surface(state_, app.compositor, app.layer_shell,
                                         output);
         return want_;
     }
 
     bool init_egl(WaylandState &app) override {
-        if (!starward_init_egl(state_, app.renderer, app.egl_display,
+        if (!logout_init_egl(state_, app.renderer, app.egl_display,
                                app.egl_config, app.egl_context))
             return false;
         state_.bound_output = output_;
         request_frame();
 
-        starward_apply_logo_config(state_, app.cfg.starward_animated_logo);
+        logout_apply_logo_config(state_, app.cfg.logout_animated_logo);
         return true;
     }
 
@@ -179,7 +179,7 @@ class StarwardModule final : public Module {
         return !want_ || state_.base.configured;
     }
     wl_surface *surface() const override { return state_.base.surface; }
-    void request_frame() override { starward_request_frame(state_); }
+    void request_frame() override { logout_request_frame(state_); }
 
     bool timer_tick(WaylandState &) override { return false; }
 
@@ -188,24 +188,24 @@ class StarwardModule final : public Module {
         if (!state_.base.open)
             return;
         if (focused_surface == state_.base.surface)
-            starward_handle_hover(state_, x, y);
+            logout_handle_hover(state_, x, y);
         else
-            starward_clear_hover(state_);
+            logout_clear_hover(state_);
         request_frame();
     }
 
     void handle_click(WaylandState &, double x, double y) override {
-        starward_handle_click(state_, x, y);
+        logout_handle_click(state_, x, y);
     }
     bool wants_pointing_hand_cursor() const override {
         return state_.base.open && state_.hovered_index >= 0;
     }
     void handle_key_event(WaylandState &, const KeyEvent &event) override {
-        starward_handle_key_event(state_, event);
+        logout_handle_key_event(state_, event);
     }
 
     std::vector<IpcHandler> ipc_handlers(WaylandState &app) override {
-        return starward_ipc_handlers(state_, app);
+        return logout_ipc_handlers(state_, app);
     }
 
     bool opened_by_widget() const override { return state_.opened_by_widget; }
@@ -215,36 +215,36 @@ class StarwardModule final : public Module {
             MonitorOutput *target = app_detail::active_target_monitor(app);
             if (target && (target->output.wl != state_.bound_output ||
                            !state_.base.layer_surface))
-                starward_retarget(state_, app.compositor, app.layer_shell,
+                logout_retarget(state_, app.compositor, app.layer_shell,
                                   app.display, app.renderer, app.egl_display,
                                   app.egl_config, app.egl_context,
                                   target->output.wl,
                                   target->output.name.c_str());
         }
-        starward_apply_logo_config(state_, app.cfg.starward_animated_logo);
-        starward_toggle(state_, true);
+        logout_apply_logo_config(state_, app.cfg.logout_animated_logo);
+        logout_toggle(state_, true);
     }
 
   private:
-    StarwardState state_;
+    LogoutState state_;
     wl_output *output_ = nullptr;
     bool want_ = false;
 };
 
-class YuhengModule final : public Module {
+class DashboardModule final : public Module {
   public:
-    const char *name() const override { return "yuheng"; }
+    const char *name() const override { return "dashboard"; }
     bool is_open() const override { return state_.base.open; }
 
     bool create_surface(WaylandState &app, wl_output *output) override {
         output_ = output;
-        want_ = yuheng_create_surface(state_, app.compositor, app.layer_shell,
+        want_ = dashboard_create_surface(state_, app.compositor, app.layer_shell,
                                       output);
         return want_;
     }
 
     bool init_egl(WaylandState &app) override {
-        if (!yuheng_init_egl(state_, app.renderer, app, app.egl_display,
+        if (!dashboard_init_egl(state_, app.renderer, app, app.egl_display,
                              app.egl_config, app.egl_context))
             return false;
         state_.bound_output = output_;
@@ -257,9 +257,9 @@ class YuhengModule final : public Module {
     }
     wl_surface *surface() const override { return state_.base.surface; }
     void request_frame() override {
-        yuheng_request_frame(
-            state_, static_cast<float>(qixing_detail::kQixingHeight),
-            static_cast<float>(qixing_detail::kQixingTopMargin));
+        dashboard_request_frame(
+            state_, static_cast<float>(bar_detail::kBarHeight),
+            static_cast<float>(bar_detail::kBarTopMargin));
     }
 
     bool timer_tick(WaylandState &app) override {
@@ -285,7 +285,7 @@ class YuhengModule final : public Module {
             panel_region_hit(state_.click_regions, x, y);
         if (!state_.dragging)
             return;
-        yuheng_handle_pointer_move(state_, app, x);
+        dashboard_handle_pointer_move(state_, app, x);
         request_frame();
     }
     bool wants_pointing_hand_cursor() const override {
@@ -298,18 +298,18 @@ class YuhengModule final : public Module {
     }
 
     void handle_click(WaylandState &app, double x, double y) override {
-        yuheng_handle_click(state_, app, x, y);
+        dashboard_handle_click(state_, app, x, y);
     }
     void handle_key_event(WaylandState &app, const KeyEvent &event) override {
-        yuheng_handle_key_event(state_, app, event);
+        dashboard_handle_key_event(state_, app, event);
     }
     void handle_scroll(WaylandState &, double dy) override {
-        yuheng_handle_scroll(state_, dy);
+        dashboard_handle_scroll(state_, dy);
         request_frame();
     }
 
     std::vector<IpcHandler> ipc_handlers(WaylandState &app) override {
-        return yuheng_ipc_handlers(state_, app);
+        return dashboard_ipc_handlers(state_, app);
     }
 
     bool opened_by_widget() const override { return state_.opened_by_widget; }
@@ -319,7 +319,7 @@ class YuhengModule final : public Module {
             MonitorOutput *target = app_detail::active_target_monitor(app);
             if (target && (target->output.wl != state_.bound_output ||
                            !state_.base.layer_surface))
-                yuheng_retarget(state_, app.compositor, app.layer_shell,
+                dashboard_retarget(state_, app.compositor, app.layer_shell,
                                 app.display, app.renderer, app, app.egl_display,
                                 app.egl_config, app.egl_context,
                                 target->output.wl, target->output.name.c_str());
@@ -327,31 +327,31 @@ class YuhengModule final : public Module {
             system_stats_poll(app.system_stats);
             gpu_temp_poll(app.gpu_temp);
         }
-        yuheng_toggle(state_, true);
+        dashboard_toggle(state_, true);
     }
 
   private:
-    YuhengState state_;
+    DashboardState state_;
     wl_output *output_ = nullptr;
     bool want_ = false;
     bool hovering_clickable_ = false;
     int poll_tick_ = 0;
 };
 
-class LiyueModule final : public Module {
+class OverviewModule final : public Module {
   public:
-    const char *name() const override { return "liyue"; }
+    const char *name() const override { return "overview"; }
     bool is_open() const override { return state_.base.open; }
 
     bool create_surface(WaylandState &app, wl_output *output) override {
         output_ = output;
-        want_ = liyue_create_surface(state_, app.compositor, app.layer_shell,
+        want_ = overview_create_surface(state_, app.compositor, app.layer_shell,
                                      output);
         return want_;
     }
 
     bool init_egl(WaylandState &app) override {
-        if (!liyue_init_egl(state_, app.renderer, app.egl_display,
+        if (!overview_init_egl(state_, app.renderer, app.egl_display,
                             app.egl_config, app.egl_context))
             return false;
         state_.bound_output = output_;
@@ -363,10 +363,10 @@ class LiyueModule final : public Module {
         return !want_ || state_.base.configured;
     }
     wl_surface *surface() const override { return state_.base.surface; }
-    void request_frame() override { liyue_request_frame(state_); }
+    void request_frame() override { overview_request_frame(state_); }
 
     int poll_timeout_ms() const override {
-        return state_.base.open ? kLiyueCaptureIntervalMs : -1;
+        return state_.base.open ? kOverviewCaptureIntervalMs : -1;
     }
 
     bool tick() override {
@@ -374,7 +374,7 @@ class LiyueModule final : public Module {
             return false;
         auto now = std::chrono::steady_clock::now();
         if (now - last_capture_arm_ <
-            std::chrono::milliseconds(kLiyueCaptureIntervalMs))
+            std::chrono::milliseconds(kOverviewCaptureIntervalMs))
             return false;
         last_capture_arm_ = now;
         return true;
@@ -382,29 +382,29 @@ class LiyueModule final : public Module {
 
     void handle_pointer_move(WaylandState &app, wl_surface *, double x,
                              double y) override {
-        liyue_handle_pointer_move(state_, app, x, y);
+        overview_handle_pointer_move(state_, app, x, y);
         hovering_clickable_ =
             app.pointer.focused_surface == state_.base.surface &&
-            liyue_point_is_clickable(state_, app, x, y);
+            overview_point_is_clickable(state_, app, x, y);
     }
     bool wants_pointing_hand_cursor() const override {
         return hovering_clickable_;
     }
     void handle_pointer_release() override {
         if (state_.app_ptr)
-            liyue_handle_pointer_release(state_, *state_.app_ptr);
+            overview_handle_pointer_release(state_, *state_.app_ptr);
     }
 
     void handle_click(WaylandState &app, double x, double y) override {
-        liyue_handle_click(state_, app, x, y);
+        overview_handle_click(state_, app, x, y);
         request_frame();
     }
     void handle_key_event(WaylandState &app, const KeyEvent &event) override {
-        liyue_handle_key_event(state_, app, event);
+        overview_handle_key_event(state_, app, event);
     }
 
     std::vector<IpcHandler> ipc_handlers(WaylandState &app) override {
-        return liyue_ipc_handlers(state_, app);
+        return overview_ipc_handlers(state_, app);
     }
 
     bool opened_by_widget() const override { return state_.opened_by_widget; }
@@ -413,43 +413,43 @@ class LiyueModule final : public Module {
             MonitorOutput *target = app_detail::active_target_monitor(app);
             if (target && (target->output.wl != state_.bound_output ||
                            !state_.base.layer_surface))
-                liyue_retarget(state_, app.compositor, app.layer_shell,
+                overview_retarget(state_, app.compositor, app.layer_shell,
                                app.display, app.renderer, app.egl_display,
                                app.egl_config, app.egl_context,
                                target->output.wl, target->output.name.c_str());
         }
-        liyue_toggle(state_, app, true);
+        overview_toggle(state_, app, true);
     }
 
   private:
-    LiyueState state_;
+    OverviewState state_;
     wl_output *output_ = nullptr;
     bool want_ = false;
     bool hovering_clickable_ = false;
     std::chrono::steady_clock::time_point last_capture_arm_{};
 };
 
-class TrullaModule final : public Module, public TextInputClient {
+class SettingsModule final : public Module, public TextInputClient {
   public:
-    const char *name() const override { return "trulla"; }
+    const char *name() const override { return "settings"; }
     bool is_open() const override { return state_.base.open; }
 
     bool create_surface(WaylandState &app, wl_output *output) override {
         output_ = output;
-        want_ = trulla_create_surface(state_, app.compositor, app.layer_shell,
+        want_ = settings_create_surface(state_, app.compositor, app.layer_shell,
                                       output);
         return want_;
     }
 
     bool init_egl(WaylandState &app) override {
-        TrullaEnv env = trulla_env(app);
-        if (!trulla_init_egl(state_, app.cfg, app.renderer, app.egl_display,
+        SettingsEnv env = settings_env(app);
+        if (!settings_init_egl(state_, app.cfg, app.renderer, app.egl_display,
                              app.egl_config, app.egl_context,
                              env.monitor_names_fn, env.focused_monitor_fn,
                              env.decode_status_fn))
             return false;
-        app.trulla_bound_output = output_;
-        app.trulla_enabled = true;
+        app.settings_bound_output = output_;
+        app.settings_enabled = true;
         state_.sync_text_input_focus = [this, &app](bool focused) {
             if (focused)
                 app.text_input.set_focused_client(state_.base.surface, this);
@@ -460,10 +460,10 @@ class TrullaModule final : public Module, public TextInputClient {
     }
 
     TextInputState text_input_state() const override {
-        return trulla_text_input_state(state_);
+        return settings_text_input_state(state_);
     }
     void text_input_apply_edit(const TextInputEdit &edit) override {
-        trulla_text_input_apply_edit(state_, edit);
+        settings_text_input_apply_edit(state_, edit);
         request_frame();
     }
     void text_input_reset_preedit() override {
@@ -479,18 +479,18 @@ class TrullaModule final : public Module, public TextInputClient {
         return !want_ || state_.base.configured;
     }
     wl_surface *surface() const override { return state_.base.surface; }
-    void request_frame() override { trulla_request_frame(state_); }
+    void request_frame() override { settings_request_frame(state_); }
 
     bool timer_tick(WaylandState &) override {
-        if (state_.focused_field == TrullaFieldId::None)
+        if (state_.focused_field == SettingsFieldId::None)
             return false;
-        text_field_blink_toggle(state_.field_buffer);
+        text_field_idle_toggle(state_.field_buffer);
         request_frame();
         return true;
     }
 
     void handle_click(WaylandState &app, double x, double y) override {
-        trulla_handle_click(
+        settings_handle_click(
             state_, app.cfg,
             [&app](Config c) {
                 app_detail::save_and_apply_config_update(app, c);
@@ -501,13 +501,13 @@ class TrullaModule final : public Module, public TextInputClient {
                              double x, double y) override {
         hovering_clickable_ = state_.base.open &&
                               focused_surface == state_.base.surface &&
-                              trulla_point_is_clickable(state_, x, y);
+                              settings_point_is_clickable(state_, x, y);
     }
     bool wants_pointing_hand_cursor() const override {
         return hovering_clickable_;
     }
     void handle_key_event(WaylandState &app, const KeyEvent &event) override {
-        trulla_handle_key_event(
+        settings_handle_key_event(
             state_, app.cfg,
             [&app](Config c) {
                 app_detail::save_and_apply_config_update(app, c);
@@ -515,15 +515,15 @@ class TrullaModule final : public Module, public TextInputClient {
             event);
     }
     void handle_scroll(WaylandState &, double dy) override {
-        trulla_handle_scroll(state_, dy);
+        settings_handle_scroll(state_, dy);
     }
 
     std::vector<IpcHandler> ipc_handlers(WaylandState &app) override {
-        return trulla_ipc_handlers(state_, app);
+        return settings_ipc_handlers(state_, app);
     }
 
   private:
-    TrullaState state_;
+    SettingsState state_;
     wl_output *output_ = nullptr;
     bool want_ = false;
     bool hovering_clickable_ = false;
@@ -559,11 +559,11 @@ class RainModule final : public Module {
     RainState state_;
 };
 
-class ResonanceModule final : public Module {
+class VisualizerModule final : public Module {
   public:
-    ~ResonanceModule() override { resonance_shutdown(state_); }
+    ~VisualizerModule() override { visualizer_shutdown(state_); }
 
-    const char *name() const override { return "resonance"; }
+    const char *name() const override { return "visualizer"; }
     bool is_open() const override { return state_.base.open; }
 
     bool create_surface(WaylandState &, wl_output *) override { return true; }
@@ -573,44 +573,44 @@ class ResonanceModule final : public Module {
     void request_frame() override {}
 
     void handle_key_event(WaylandState &app, const KeyEvent &event) override {
-        resonance_handle_key_event(state_, app, event);
+        visualizer_handle_key_event(state_, app, event);
     }
 
     void apply_config(WaylandState &, const Config &cfg) override {
-        resonance_apply_params(state_, cfg.resonance);
+        visualizer_apply_params(state_, cfg.visualizer);
     }
 
     std::vector<IpcHandler> ipc_handlers(WaylandState &app) override {
-        return resonance_ipc_handlers(state_, app);
+        return visualizer_ipc_handlers(state_, app);
     }
 
   private:
-    ResonanceState state_;
+    VisualizerState state_;
 };
 
-class PenanceModule final : public Module {
+class LockModule final : public Module {
   public:
-    PenanceState &state() { return state_; }
+    LockState &state() { return state_; }
 
-    const char *name() const override { return "penance"; }
+    const char *name() const override { return "lock"; }
     bool is_open() const override { return state_.active; }
 
     bool create_surface(WaylandState &, wl_output *) override { return true; }
 
     bool init_egl(WaylandState &app) override {
         state_.app = &app;
-        state_.draw_expanse = [&app](const std::string &output_name, Node &root,
+        state_.draw_wallpaper = [&app](const std::string &output_name, Node &root,
                                      int32_t w, int32_t h) {
             for (auto &mon : app.outputs) {
                 if (mon->output.name != output_name)
                     continue;
-                if (auto *wp = mon->module<ExpansePerMonitorModule>())
-                    expanse_draw_columns(wp->expanse_state(), &root, w, h);
+                if (auto *wp = mon->module<WallpaperPerMonitorModule>())
+                    wallpaper_draw_columns(wp->wallpaper_state(), &root, w, h);
                 return;
             }
         };
         state_.panel_gated_for = [&app](const std::string &output_name) {
-            return penance_effective_enabled(app.cfg, output_name);
+            return lock_effective_enabled(app.cfg, output_name);
         };
         const char *echo_candidates[] = {KOKUSEI_INPUT_ECHO,
                                          "assets/electro.png"};
@@ -625,10 +625,10 @@ class PenanceModule final : public Module {
 
     bool configured() const override { return true; }
     wl_surface *surface() const override {
-        return penance_focused_surface(state_);
+        return lock_focused_surface(state_);
     }
     bool owns_surface(wl_surface *s) const override {
-        return penance_owns_surface(state_, s);
+        return lock_owns_surface(state_, s);
     }
     void request_frame() override {}
 
@@ -640,42 +640,42 @@ class PenanceModule final : public Module {
         system_stats_poll(app.system_stats);
         if (poll_tick_ % 5 == 0 || app.gpu_temp.nvidia_smi_running)
             gpu_temp_poll(app.gpu_temp);
-        penance_timer_tick(state_);
+        lock_timer_tick(state_);
         return true;
     }
 
     void handle_key_event(WaylandState &, const KeyEvent &event) override {
-        penance_handle_key(state_, event);
+        lock_handle_key(state_, event);
     }
     void handle_click(WaylandState &app, double x, double y) override {
-        penance_handle_click(state_, app.pointer.focused_surface, x, y);
+        lock_handle_click(state_, app.pointer.focused_surface, x, y);
     }
 
     std::vector<IpcHandler> ipc_handlers(WaylandState &app) override {
-        return {{"penance",
+        return {{"lock",
                  [this, &app] {
                      cpu_temp_poll(app.cpu_temp);
                      system_stats_poll(app.system_stats);
                      gpu_temp_poll(app.gpu_temp);
-                     penance_request(state_, app);
+                     lock_request(state_, app);
                  },
                  "lock the session"}};
     }
 
   private:
-    PenanceState state_;
+    LockState state_;
     int poll_tick_ = 0;
 };
 
-void expanse_sync_active_mode(ExpanseState &wp, const Config &cfg,
+void wallpaper_sync_active_mode(WallpaperState &wp, const Config &cfg,
                               const std::string &monitor_name) {
-    expanse_sync_from_config(wp, cfg, monitor_name,
-                             cfg.expanse_animated_enabled);
+    wallpaper_sync_from_config(wp, cfg, monitor_name,
+                             cfg.wallpaper_animated_enabled);
 }
 
 } // namespace
 
-TrullaEnv trulla_env(WaylandState &app) {
+SettingsEnv settings_env(WaylandState &app) {
     return {
         [&app] {
             std::vector<std::string> names;
@@ -693,186 +693,186 @@ TrullaEnv trulla_env(WaylandState &app) {
             for (auto &mon : app.outputs) {
                 if (mon->output.name != name)
                     continue;
-                if (auto *wp = mon->module<ExpansePerMonitorModule>())
+                if (auto *wp = mon->module<WallpaperPerMonitorModule>())
                     return wp->decode_status(column);
             }
-            return MediaDecodeStatus::Blink;
+            return MediaDecodeStatus::Idle;
         },
     };
 }
 
-bool SparkPerMonitorModule::create_surface(WaylandState &app,
+bool OsdPerMonitorModule::create_surface(WaylandState &app,
                                            MonitorOutput &mon,
                                            wl_output *output) {
-    if (!spark_create_surface(state_, app.compositor, app.layer_shell, output))
-        klog("spark: failed to create layer surface on '%s'",
+    if (!osd_create_surface(state_, app.compositor, app.layer_shell, output))
+        klog("osd: failed to create layer surface on '%s'",
              mon.output.name.c_str());
     return true;
 }
 
-bool SparkPerMonitorModule::configured() const {
+bool OsdPerMonitorModule::configured() const {
     return !state_.layer_surface || state_.configured;
 }
 
-bool SparkPerMonitorModule::init_egl(WaylandState &app, MonitorOutput &mon) {
+bool OsdPerMonitorModule::init_egl(WaylandState &app, MonitorOutput &mon) {
     if (state_.layer_surface &&
-        spark_init_egl(state_, app.renderer, app.egl_display, app.egl_config,
+        osd_init_egl(state_, app.renderer, app.egl_display, app.egl_config,
                        app.egl_context))
         eglMakeCurrent(app.egl_display, mon.egl_surface, mon.egl_surface,
                        app.egl_context);
     return true;
 }
 
-void SparkPerMonitorModule::destroy(WaylandState &app, MonitorOutput &) {
+void OsdPerMonitorModule::destroy(WaylandState &app, MonitorOutput &) {
     destroy_layer_surface(app.egl_display, state_.surface, state_.layer_surface,
                           state_.egl_window, state_.egl_surface);
 }
 
-bool SparkPerMonitorModule::owns_surface(wl_surface *surface) const {
+bool OsdPerMonitorModule::owns_surface(wl_surface *surface) const {
     return surface == state_.surface;
 }
 
-void SparkPerMonitorModule::tick(WaylandState &, MonitorOutput &) {
+void OsdPerMonitorModule::tick(WaylandState &, MonitorOutput &) {
     if (state_.visible && std::chrono::steady_clock::now() >= state_.hide_at)
-        spark_hide(state_);
+        osd_hide(state_);
 }
 
-bool ExpansePerMonitorModule::create_surface(WaylandState &app,
+bool WallpaperPerMonitorModule::create_surface(WaylandState &app,
                                              MonitorOutput &mon,
                                              wl_output *output) {
-    if (!expanse_create_surface(state_, app.compositor, app.layer_shell,
+    if (!wallpaper_create_surface(state_, app.compositor, app.layer_shell,
                                 output))
-        klog("expanse: failed to create layer surface on '%s'",
+        klog("wallpaper: failed to create layer surface on '%s'",
              mon.output.name.c_str());
     return true;
 }
 
-bool ExpansePerMonitorModule::configured() const {
+bool WallpaperPerMonitorModule::configured() const {
     return !state_.layer_surface || state_.configured;
 }
 
-bool ExpansePerMonitorModule::init_egl(WaylandState &app, MonitorOutput &mon) {
+bool WallpaperPerMonitorModule::init_egl(WaylandState &app, MonitorOutput &mon) {
     if (!state_.layer_surface)
         return true;
     state_.app = &app;
     state_.output_name = mon.output.name;
-    if (!expanse_init_egl(state_, app.renderer, app.egl_display, app.egl_config,
+    if (!wallpaper_init_egl(state_, app.renderer, app.egl_display, app.egl_config,
                           app.egl_context))
         return true;
-    expanse_sync_active_mode(state_, app.cfg, mon.output.name);
+    wallpaper_sync_active_mode(state_, app.cfg, mon.output.name);
     state_.on_resize = [&app, &mon, this] {
-        if (!app.cfg.expanse_animated_enabled)
+        if (!app.cfg.wallpaper_animated_enabled)
             return;
-        expanse_columns_stop_all(state_);
-        expanse_sync_from_config(state_, app.cfg, mon.output.name, true);
+        wallpaper_columns_stop_all(state_);
+        wallpaper_sync_from_config(state_, app.cfg, mon.output.name, true);
     };
-    expanse_request_frame(state_);
+    wallpaper_request_frame(state_);
     eglMakeCurrent(app.egl_display, mon.egl_surface, mon.egl_surface,
                    app.egl_context);
     return true;
 }
 
-void ExpansePerMonitorModule::destroy(WaylandState &app, MonitorOutput &) {
-    expanse_columns_stop_all(state_);
+void WallpaperPerMonitorModule::destroy(WaylandState &app, MonitorOutput &) {
+    wallpaper_columns_stop_all(state_);
     destroy_layer_surface(app.egl_display, state_.surface, state_.layer_surface,
                           state_.egl_window, state_.egl_surface);
 }
 
-bool ExpansePerMonitorModule::owns_surface(wl_surface *surface) const {
+bool WallpaperPerMonitorModule::owns_surface(wl_surface *surface) const {
     return surface == state_.surface;
 }
 
-void ExpansePerMonitorModule::pause_animation() {
-    expanse_columns_pause_all(state_);
+void WallpaperPerMonitorModule::pause_animation() {
+    wallpaper_columns_pause_all(state_);
 }
 
-void ExpansePerMonitorModule::resume_animation() {
-    expanse_columns_resume_all(state_);
+void WallpaperPerMonitorModule::resume_animation() {
+    wallpaper_columns_resume_all(state_);
 }
 
-void ExpansePerMonitorModule::request_frame() { expanse_wake(state_); }
+void WallpaperPerMonitorModule::request_frame() { wallpaper_wake(state_); }
 
 MediaDecodeStatus
-ExpansePerMonitorModule::decode_status(int column_index) const {
-    return expanse_column_status(state_, column_index);
+WallpaperPerMonitorModule::decode_status(int column_index) const {
+    return wallpaper_column_status(state_, column_index);
 }
 
-void ExpansePerMonitorModule::resync(WaylandState &, MonitorOutput &mon,
+void WallpaperPerMonitorModule::resync(WaylandState &, MonitorOutput &mon,
                                      const Config &new_cfg) {
-    expanse_sync_active_mode(state_, new_cfg, mon.output.name);
-    expanse_request_frame(state_);
+    wallpaper_sync_active_mode(state_, new_cfg, mon.output.name);
+    wallpaper_request_frame(state_);
 }
 
-bool HeraldViewPerMonitorModule::create_surface(WaylandState &app,
+bool NotificationViewPerMonitorModule::create_surface(WaylandState &app,
                                                 MonitorOutput &mon,
                                                 wl_output *output) {
-    if (heralds_effective_enabled(app.cfg, mon.output.name) &&
-        !herald_view_create_surface(state_, app.compositor, app.layer_shell,
+    if (notifications_effective_enabled(app.cfg, mon.output.name) &&
+        !notification_view_create_surface(state_, app.compositor, app.layer_shell,
                                     output))
-        klog("herald: failed to create layer surface on '%s'",
+        klog("notification: failed to create layer surface on '%s'",
              mon.output.name.c_str());
     return true;
 }
 
-bool HeraldViewPerMonitorModule::configured() const {
+bool NotificationViewPerMonitorModule::configured() const {
     return !state_.layer_surface || state_.configured;
 }
 
-bool HeraldViewPerMonitorModule::init_egl(WaylandState &app,
+bool NotificationViewPerMonitorModule::init_egl(WaylandState &app,
                                           MonitorOutput &mon) {
     if (state_.layer_surface &&
-        herald_view_init_egl(state_, app.herald, app.renderer, app.egl_display,
+        notification_view_init_egl(state_, app.notification, app.renderer, app.egl_display,
                              app.egl_config, app.egl_context))
         eglMakeCurrent(app.egl_display, mon.egl_surface, mon.egl_surface,
                        app.egl_context);
     return true;
 }
 
-void HeraldViewPerMonitorModule::destroy(WaylandState &app, MonitorOutput &) {
+void NotificationViewPerMonitorModule::destroy(WaylandState &app, MonitorOutput &) {
     destroy_layer_surface(app.egl_display, state_.surface, state_.layer_surface,
                           state_.egl_window, state_.egl_surface);
 }
 
-bool HeraldViewPerMonitorModule::owns_surface(wl_surface *surface) const {
+bool NotificationViewPerMonitorModule::owns_surface(wl_surface *surface) const {
     return surface == state_.surface;
 }
 
-void HeraldViewPerMonitorModule::request_frame() {
-    herald_view_request_frame(state_);
+void NotificationViewPerMonitorModule::request_frame() {
+    notification_view_request_frame(state_);
 }
 
-void HeraldViewPerMonitorModule::handle_click(WaylandState &, MonitorOutput &,
+void NotificationViewPerMonitorModule::handle_click(WaylandState &, MonitorOutput &,
                                               wl_surface *, int button,
                                               double x, double y, uint32_t) {
     if (button != BTN_LEFT)
         return;
-    if (herald_view_handle_close_click(state_, x, y))
-        herald_view_request_frame(state_);
+    if (notification_view_handle_close_click(state_, x, y))
+        notification_view_request_frame(state_);
 }
 
-void HeraldViewPerMonitorModule::handle_pointer_move(WaylandState &app,
+void NotificationViewPerMonitorModule::handle_pointer_move(WaylandState &app,
                                                      MonitorOutput &, double x,
                                                      double y) {
     bool changed = app.pointer.focused_surface == state_.surface
-                       ? herald_view_set_close_hover(state_, x, y)
-                       : herald_view_clear_close_hover(state_);
+                       ? notification_view_set_close_hover(state_, x, y)
+                       : notification_view_clear_close_hover(state_);
     if (changed)
-        herald_view_request_frame(state_);
+        notification_view_request_frame(state_);
 }
 
-bool HeraldViewPerMonitorModule::wants_pointing_hand_cursor() const {
+bool NotificationViewPerMonitorModule::wants_pointing_hand_cursor() const {
     return state_.hovered_close_id != 0;
 }
 
-void HeraldViewPerMonitorModule::resync(WaylandState &app, MonitorOutput &mon) {
-    bool want = heralds_effective_enabled(app.cfg, mon.output.name);
+void NotificationViewPerMonitorModule::resync(WaylandState &app, MonitorOutput &mon) {
+    bool want = notifications_effective_enabled(app.cfg, mon.output.name);
     bool have = state_.layer_surface != nullptr;
     if (want && !have) {
-        if (herald_view_create_surface(state_, app.compositor, app.layer_shell,
+        if (notification_view_create_surface(state_, app.compositor, app.layer_shell,
                                        mon.output.wl)) {
             while (!state_.configured)
                 wl_display_dispatch(app.display);
-            if (herald_view_init_egl(state_, app.herald, app.renderer,
+            if (notification_view_init_egl(state_, app.notification, app.renderer,
                                      app.egl_display, app.egl_config,
                                      app.egl_context))
                 eglMakeCurrent(app.egl_display, mon.egl_surface,
@@ -886,33 +886,33 @@ void HeraldViewPerMonitorModule::resync(WaylandState &app, MonitorOutput &mon) {
     }
 }
 
-bool BlinkPerMonitorModule::create_surface(WaylandState &app,
+bool IdlePerMonitorModule::create_surface(WaylandState &app,
                                            MonitorOutput &mon,
                                            wl_output *output) {
     if (mon.output.name == "HEADLESS")
         return true;
-    if (!blink_overlay_create_surface(state_, app.compositor, app.layer_shell,
+    if (!idle_overlay_create_surface(state_, app.compositor, app.layer_shell,
                                       output))
-        klog("blink-overlay: failed to create layer surface on '%s'",
+        klog("idle-overlay: failed to create layer surface on '%s'",
              mon.output.name.c_str());
     return true;
 }
 
-bool BlinkPerMonitorModule::configured() const {
+bool IdlePerMonitorModule::configured() const {
     return !state_.layer_surface || state_.configured;
 }
 
-bool BlinkPerMonitorModule::init_egl(WaylandState &app, MonitorOutput &mon) {
+bool IdlePerMonitorModule::init_egl(WaylandState &app, MonitorOutput &mon) {
     if (!state_.layer_surface)
         return true;
-    if (!blink_overlay_init_egl(state_, app.renderer, app.egl_display,
+    if (!idle_overlay_init_egl(state_, app.renderer, app.egl_display,
                                 app.egl_config, app.egl_context))
         return true;
     state_.draw_ambient = [&mon](Node &root, float w, float h) {
-        auto *wp = mon.module<ExpansePerMonitorModule>();
+        auto *wp = mon.module<WallpaperPerMonitorModule>();
         if (!wp)
             return;
-        expanse_draw_columns(wp->expanse_state(), &root,
+        wallpaper_draw_columns(wp->wallpaper_state(), &root,
                              static_cast<int32_t>(w), static_cast<int32_t>(h));
     };
     eglMakeCurrent(app.egl_display, mon.egl_surface, mon.egl_surface,
@@ -920,37 +920,37 @@ bool BlinkPerMonitorModule::init_egl(WaylandState &app, MonitorOutput &mon) {
     return true;
 }
 
-void BlinkPerMonitorModule::destroy(WaylandState &app, MonitorOutput &) {
+void IdlePerMonitorModule::destroy(WaylandState &app, MonitorOutput &) {
     destroy_layer_surface(app.egl_display, state_.surface, state_.layer_surface,
                           state_.egl_window, state_.egl_surface);
 }
 
-bool BlinkPerMonitorModule::owns_surface(wl_surface *surface) const {
+bool IdlePerMonitorModule::owns_surface(wl_surface *surface) const {
     return surface == state_.surface;
 }
 
-void BlinkPerMonitorModule::timer_tick(WaylandState &app, MonitorOutput &mon) {
+void IdlePerMonitorModule::timer_tick(WaylandState &app, MonitorOutput &mon) {
     if (mon.output.name == "HEADLESS")
         return;
-    if (!app.blink.last_activity.count(mon.output.name))
-        app.blink.last_activity[mon.output.name] =
+    if (!app.idle.last_activity.count(mon.output.name))
+        app.idle.last_activity[mon.output.name] =
             std::chrono::steady_clock::now();
 
     bool ambient_now =
         ambient_effective_enabled(app.cfg, mon.output.name) &&
-        is_blink(app.blink, mon.output.name,
+        is_idle(app.idle, mon.output.name,
                  ambient_effective_timeout_seconds(app.cfg, mon.output.name));
     bool screensaver_now =
         screensaver_effective_enabled(app.cfg, mon.output.name) &&
-        is_blink(
-            app.blink, mon.output.name,
+        is_idle(
+            app.idle, mon.output.name,
             screensaver_effective_timeout_seconds(app.cfg, mon.output.name));
 
-    blink_overlay_set_active(state_, ambient_now, screensaver_now);
+    idle_overlay_set_active(state_, ambient_now, screensaver_now);
 
     if (screensaver_now != screensaver_was_active_) {
         screensaver_was_active_ = screensaver_now;
-        if (auto *wp = mon.module<ExpansePerMonitorModule>()) {
+        if (auto *wp = mon.module<WallpaperPerMonitorModule>()) {
             if (screensaver_now)
                 wp->pause_animation();
             else
@@ -961,55 +961,55 @@ void BlinkPerMonitorModule::timer_tick(WaylandState &app, MonitorOutput &mon) {
 
 std::vector<std::unique_ptr<Module>> build_app_modules() {
     std::vector<std::unique_ptr<Module>> modules;
-    modules.push_back(std::make_unique<OverseerModule>());
-    modules.push_back(std::make_unique<StarwardModule>());
-    modules.push_back(std::make_unique<YuhengModule>());
-    modules.push_back(std::make_unique<LiyueModule>());
-    modules.push_back(std::make_unique<TrullaModule>());
+    modules.push_back(std::make_unique<LauncherModule>());
+    modules.push_back(std::make_unique<LogoutModule>());
+    modules.push_back(std::make_unique<DashboardModule>());
+    modules.push_back(std::make_unique<OverviewModule>());
+    modules.push_back(std::make_unique<SettingsModule>());
     modules.push_back(std::make_unique<RainModule>());
-    modules.push_back(std::make_unique<ResonanceModule>());
-    modules.push_back(std::make_unique<PenanceModule>());
+    modules.push_back(std::make_unique<VisualizerModule>());
+    modules.push_back(std::make_unique<LockModule>());
     return modules;
 }
 
 namespace {
 
-PenanceModule *find_penance_module(WaylandState &app) {
+LockModule *find_lock_module(WaylandState &app) {
     for (auto &m : app.overlays)
-        if (auto *lm = dynamic_cast<PenanceModule *>(m.get()))
+        if (auto *lm = dynamic_cast<LockModule *>(m.get()))
             return lm;
     return nullptr;
 }
 
 } // namespace
 
-void penance_notify_output_added(WaylandState &app, wl_output *output,
+void lock_notify_output_added(WaylandState &app, wl_output *output,
                                  const char *name) {
-    if (auto *lm = find_penance_module(app))
-        penance_hotplug_add(lm->state(), output, name);
+    if (auto *lm = find_lock_module(app))
+        lock_hotplug_add(lm->state(), output, name);
 }
 
-void penance_notify_output_removed(WaylandState &app, wl_output *output) {
-    if (auto *lm = find_penance_module(app))
-        penance_hotplug_remove(lm->state(), output);
+void lock_notify_output_removed(WaylandState &app, wl_output *output) {
+    if (auto *lm = find_lock_module(app))
+        lock_hotplug_remove(lm->state(), output);
 }
 
-bool penance_is_locked(WaylandState &app) {
-    auto *lm = find_penance_module(app);
+bool lock_is_locked(WaylandState &app) {
+    auto *lm = find_lock_module(app);
     return lm && lm->state().locked;
 }
 
-void penance_start(WaylandState &app) {
-    if (auto *lm = find_penance_module(app))
-        penance_request(lm->state(), app);
+void lock_start(WaylandState &app) {
+    if (auto *lm = find_lock_module(app))
+        lock_request(lm->state(), app);
 }
 
 std::vector<std::unique_ptr<PerMonitorModule>> build_per_monitor_modules() {
     std::vector<std::unique_ptr<PerMonitorModule>> modules;
-    modules.push_back(std::make_unique<QixingPerMonitorModule>());
-    modules.push_back(std::make_unique<ExpansePerMonitorModule>());
-    modules.push_back(std::make_unique<SparkPerMonitorModule>());
-    modules.push_back(std::make_unique<HeraldViewPerMonitorModule>());
-    modules.push_back(std::make_unique<BlinkPerMonitorModule>());
+    modules.push_back(std::make_unique<BarPerMonitorModule>());
+    modules.push_back(std::make_unique<WallpaperPerMonitorModule>());
+    modules.push_back(std::make_unique<OsdPerMonitorModule>());
+    modules.push_back(std::make_unique<NotificationViewPerMonitorModule>());
+    modules.push_back(std::make_unique<IdlePerMonitorModule>());
     return modules;
 }

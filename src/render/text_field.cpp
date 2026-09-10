@@ -68,16 +68,16 @@ TextFieldResult text_field_handle_key(TextFieldState &field,
     case KeyKind::Text:
         field.text += event.text;
         field.preedit.clear();
-        field.cursor_blink_visible = true;
+        field.cursor_idle_visible = true;
         return TextFieldResult::Changed;
     case KeyKind::Preedit:
         field.preedit = event.text;
-        field.cursor_blink_visible = true;
+        field.cursor_idle_visible = true;
         return TextFieldResult::Changed;
     case KeyKind::Backspace:
         text_field_backspace(field.text);
         field.preedit.clear();
-        field.cursor_blink_visible = true;
+        field.cursor_idle_visible = true;
         return TextFieldResult::Changed;
     case KeyKind::Enter:
         field.preedit.clear();
@@ -98,14 +98,14 @@ size_t text_field_utf8_len(const std::string &text) {
     return n;
 }
 
-bool text_field_blink_toggle(TextFieldState &field) {
-    field.cursor_blink_visible = !field.cursor_blink_visible;
+bool text_field_idle_toggle(TextFieldState &field) {
+    field.cursor_idle_visible = !field.cursor_idle_visible;
     return true;
 }
 
 void draw_text_field_caret(Node *parent, const TextFieldState &field,
                            Rect caret, const float *color, bool active) {
-    if (active && field.cursor_blink_visible)
+    if (active && field.cursor_idle_visible)
         node_add_rect(parent, caret.x, caret.y, caret.w, caret.h, color);
 }
 

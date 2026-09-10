@@ -37,14 +37,14 @@ kokusei_font_dir   = kokusei_data_dir / 'fonts'
 kokusei_bullet_dir = kokusei_data_dir / 'constellation'
 
 install_data('assets/fonts/tabler-icons.ttf', install_dir: kokusei_font_dir) # shell-wide icons
-install_data('assets/fonts/YujiMai.ttf', install_dir: kokusei_font_dir)      # starward module
+install_data('assets/fonts/YujiMai.ttf', install_dir: kokusei_font_dir)      # logout module
 install_data('assets/stellar-restoration.png', install_dir: kokusei_data_dir)            # default wallpaper
 install_data('assets/stellar-restoration.svg', install_dir: kokusei_data_dir)         # idle screensaver logo (placeholder)
 install_data('assets/stiletto.svg', install_dir: kokusei_data_dir)
 install_data('assets/electro.png', install_dir: kokusei_data_dir)            # password echo glyph
 install_data('assets/gifs/profile.gif', install_dir: kokusei_data_dir / 'gifs') # lock avatar + settings pfp
-install_data('assets/starward/logo.gif', install_dir: kokusei_data_dir / 'starward') # starward centre logo (animated)
-install_data('assets/starward/logo.png', install_dir: kokusei_data_dir / 'starward') # starward centre logo (static)
+install_data('assets/logout/logo.gif', install_dir: kokusei_data_dir / 'logout') # logout centre logo (animated)
+install_data('assets/logout/logo.png', install_dir: kokusei_data_dir / 'logout') # logout centre logo (static)
 install_data('assets/pam/kokusei', install_dir: kokusei_data_dir / 'pam')    # lock PAM service
 install_subdir('assets/shaders', install_dir: kokusei_data_dir)              # all GLES shader sources
 foreach n : ['1', '2', '3', '4', '5', '6']                                   # keqing constellations
@@ -154,9 +154,9 @@ kokusei_service_test_sources = [
   'src/service/telemetry_service.cpp',
   'src/service/input_service.cpp',
   'src/service/output_service.cpp',
-  'src/service/expanse_service.cpp',
+  'src/service/wallpaper_service.cpp',
   'src/service/media_service.cpp',
-  'src/service/trulla_service.cpp',
+  'src/service/settings_service.cpp',
   'src/service/icon_service.cpp',
 ]
 
@@ -169,81 +169,81 @@ kokusei_service_main_only_sources = [
   'src/service/notification_service.cpp',
 ]
 
-kokusei_overseer_main_only_sources = [
-  'src/modules/overseer.cpp',
+kokusei_launcher_main_only_sources = [
+  'src/modules/launcher.cpp',
 ]
 
-kokusei_overseer_test_sources = [
-  'src/modules/overseer/apps_provider.cpp',
-  'src/modules/overseer/desktop_entry.cpp',
-  'src/modules/overseer/files_provider.cpp',
-  'src/modules/overseer/launch_action.cpp',
-  'src/modules/overseer/search.cpp',
-  'src/modules/overseer/submenu.cpp',
-  'src/modules/overseer/visit_store.cpp',
+kokusei_launcher_test_sources = [
+  'src/modules/launcher/apps_provider.cpp',
+  'src/modules/launcher/desktop_entry.cpp',
+  'src/modules/launcher/files_provider.cpp',
+  'src/modules/launcher/launch_action.cpp',
+  'src/modules/launcher/search.cpp',
+  'src/modules/launcher/submenu.cpp',
+  'src/modules/launcher/visit_store.cpp',
 ]
 
-kokusei_qixing_test_sources = []
+kokusei_bar_test_sources = []
 
-kokusei_qixing_panels_main_only_sources = [
-  'src/modules/qixing/panel/tray_panel.cpp',
-  'src/modules/qixing/panel/network_panel.cpp',
-  'src/modules/qixing/panel/bluetooth_panel.cpp',
-  'src/modules/qixing/panel/volume_panel.cpp',
-  'src/modules/qixing/panel/battery_panel.cpp',
-  'src/modules/qixing/panel/system_monitor_panel.cpp',
-  'src/modules/qixing/panel/clock_panel.cpp',
+kokusei_bar_panels_main_only_sources = [
+  'src/modules/bar/panel/tray_panel.cpp',
+  'src/modules/bar/panel/network_panel.cpp',
+  'src/modules/bar/panel/bluetooth_panel.cpp',
+  'src/modules/bar/panel/volume_panel.cpp',
+  'src/modules/bar/panel/battery_panel.cpp',
+  'src/modules/bar/panel/system_monitor_panel.cpp',
+  'src/modules/bar/panel/clock_panel.cpp',
 ]
 
-kokusei_qixing_main_only_sources = [
-  'src/modules/qixing.cpp',
-  'src/modules/qixing/widget/widget_capsule.cpp',
-  'src/modules/qixing/widget/clock_widget.cpp',
-  'src/modules/qixing/widget/workspace_widget.cpp',
-  'src/modules/qixing/widget/battery_widget.cpp',
-  'src/modules/qixing/widget/starward_widget.cpp',
-  'src/modules/qixing/widget/bluetooth_widget.cpp',
-  'src/modules/qixing/widget/network_widget.cpp',
-  'src/modules/qixing/widget/yuheng_widget.cpp',
-  'src/modules/qixing/widget/system_monitor_widget.cpp',
-  'src/modules/qixing/widget/tray_widget.cpp',
-  'src/modules/qixing/widget/volume_widget.cpp',
+kokusei_bar_main_only_sources = [
+  'src/modules/bar.cpp',
+  'src/modules/bar/widget/widget_capsule.cpp',
+  'src/modules/bar/widget/clock_widget.cpp',
+  'src/modules/bar/widget/workspace_widget.cpp',
+  'src/modules/bar/widget/battery_widget.cpp',
+  'src/modules/bar/widget/logout_widget.cpp',
+  'src/modules/bar/widget/bluetooth_widget.cpp',
+  'src/modules/bar/widget/network_widget.cpp',
+  'src/modules/bar/widget/dashboard_widget.cpp',
+  'src/modules/bar/widget/system_monitor_widget.cpp',
+  'src/modules/bar/widget/tray_widget.cpp',
+  'src/modules/bar/widget/volume_widget.cpp',
 ]
 
-kokusei_blink_main_only_sources = [
-  'src/modules/blink.cpp',
+kokusei_idle_main_only_sources = [
+  'src/modules/idle.cpp',
 ]
 
-kokusei_penance_test_sources = [
-  'src/modules/penance/layout.cpp',
+kokusei_lock_test_sources = [
+  'src/modules/lock/layout.cpp',
 ]
 
-kokusei_penance_main_only_sources = [
-  'src/modules/penance.cpp',
-  'src/modules/penance/pam_authenticator.cpp',
+kokusei_lock_main_only_sources = [
+  'src/modules/lock.cpp',
+  'src/modules/lock/pam_authenticator.cpp',
 ]
 
 kokusei_overlay_main_only_sources = [
-  'src/modules/spark.cpp',
-  'src/modules/expanse.cpp',
-  'src/modules/herald.cpp',
-  'src/modules/starward.cpp',
-  'src/modules/starward/thunder_burst.cpp',
-  'src/modules/yuheng.cpp',
-  'src/modules/liyue.cpp',
+  'src/modules/osd.cpp',
+  'src/modules/wallpaper.cpp',
+  'src/modules/notification.cpp',
+  'src/modules/logout.cpp',
+  'src/modules/logout/thunder_burst.cpp',
+  'src/modules/dashboard.cpp',
+  'src/modules/overview.cpp',
   'src/modules/rain.cpp',
   'src/modules/rain/matrix_rain.cpp',
   'src/modules/rain/stiletto_rain.cpp',
-  'src/modules/resonance.cpp',
-  'src/modules/resonance/audio_capture.cpp',
-  'src/modules/resonance/audio_stages.cpp',
-  'src/modules/resonance/bar_resonance.cpp',
-  'src/modules/resonance/sphere_resonance.cpp',
-  'src/modules/resonance/resonance_shaders.cpp',
+  'src/modules/visualizer.cpp',
+  'src/modules/visualizer/audio_capture.cpp',
+  'src/modules/visualizer/audio_stages.cpp',
+  'src/modules/visualizer/bar_visualizer.cpp',
+  'src/modules/visualizer/sphere_visualizer.cpp',
+  'src/modules/visualizer/visualizer_shaders.cpp',
 ]
 
-kokusei_resonance_test_sources = [
-  'src/modules/resonance/fft.cpp',
+kokusei_visualizer_test_sources = [
+  'src/modules/visualizer/fft.cpp',
 ]
 
 kokusei_app_test_sources = [
@@ -261,14 +261,14 @@ kokusei_app_main_only_sources = [
   'src/app/wayland_registry.cpp',
 ]
 
-kokusei_trulla_main_only_sources = [
-  'src/modules/trulla.cpp',
-  'src/modules/trulla/expanse_tab.cpp',
-  'src/modules/trulla/displays_tab.cpp',
-  'src/modules/trulla/blink_tab.cpp',
-  'src/modules/trulla/starward_tab.cpp',
-  'src/modules/trulla/resonance_tab.cpp',
-  'src/modules/trulla/rain_tab.cpp',
+kokusei_settings_main_only_sources = [
+  'src/modules/settings.cpp',
+  'src/modules/settings/wallpaper_tab.cpp',
+  'src/modules/settings/displays_tab.cpp',
+  'src/modules/settings/idle_tab.cpp',
+  'src/modules/settings/logout_tab.cpp',
+  'src/modules/settings/visualizer_tab.cpp',
+  'src/modules/settings/rain_tab.cpp',
 ]
 
 kokusei_split_sources = [
@@ -277,29 +277,29 @@ kokusei_split_sources = [
   kokusei_render_main_only_sources,
   kokusei_service_test_sources,
   kokusei_service_main_only_sources,
-  kokusei_overseer_test_sources,
-  kokusei_overseer_main_only_sources,
-  kokusei_blink_main_only_sources,
-  kokusei_penance_test_sources,
-  kokusei_penance_main_only_sources,
+  kokusei_launcher_test_sources,
+  kokusei_launcher_main_only_sources,
+  kokusei_idle_main_only_sources,
+  kokusei_lock_test_sources,
+  kokusei_lock_main_only_sources,
   kokusei_overlay_main_only_sources,
-  kokusei_resonance_test_sources,
+  kokusei_visualizer_test_sources,
   kokusei_app_test_sources,
   kokusei_app_main_only_sources,
-  kokusei_trulla_main_only_sources,
-  kokusei_qixing_test_sources,
-  kokusei_qixing_panels_main_only_sources,
-  kokusei_qixing_main_only_sources,
+  kokusei_settings_main_only_sources,
+  kokusei_bar_test_sources,
+  kokusei_bar_panels_main_only_sources,
+  kokusei_bar_main_only_sources,
 ]
 
 kokusei_test_split_sources = [
   kokusei_core_split_sources,
   kokusei_render_test_sources,
   kokusei_service_test_sources,
-  kokusei_overseer_test_sources,
-  kokusei_penance_test_sources,
-  kokusei_qixing_test_sources,
-  kokusei_resonance_test_sources,
+  kokusei_launcher_test_sources,
+  kokusei_lock_test_sources,
+  kokusei_bar_test_sources,
+  kokusei_visualizer_test_sources,
   kokusei_app_test_sources,
 ]
 
@@ -354,8 +354,8 @@ executable(
     '-DKOKUSEI_DEFAULT_WALLPAPER="' + kokusei_data_dir / 'stellar-restoration.png' + '"',
     '-DKOKUSEI_BULLET_DIR="' + kokusei_bullet_dir + '"',
     '-DKOKUSEI_YUJIMAI_FONT="' + kokusei_font_dir / 'YujiMai.ttf' + '"',
-    '-DKOKUSEI_STARWARD_LOGO="' + kokusei_data_dir / 'starward/logo.gif' + '"',
-    '-DKOKUSEI_STARWARD_LOGO_STATIC="' + kokusei_data_dir / 'starward/logo.png' + '"',
+    '-DKOKUSEI_LOGOUT_LOGO="' + kokusei_data_dir / 'logout/logo.gif' + '"',
+    '-DKOKUSEI_LOGOUT_LOGO_STATIC="' + kokusei_data_dir / 'logout/logo.png' + '"',
     '-DKOKUSEI_IDLE_LOGO="' + kokusei_data_dir / 'stellar-restoration.svg' + '"',
     '-DKOKUSEI_STILETTO_SPRITE="' + kokusei_data_dir / 'stiletto.svg' + '"',
     '-DKOKUSEI_INPUT_ECHO="' + kokusei_data_dir / 'electro.png' + '"',
@@ -373,7 +373,7 @@ kokusei_test = executable(
   kokusei_test_split_sources,
   proto_gen_test,
   'test/app/test_config.cpp',
-  'test/app/test_expanse_resolve.cpp',
+  'test/app/test_wallpaper_resolve.cpp',
   'test/core/test_async_process.cpp',
   'test/core/test_deferred_call.cpp',
   'test/core/test_path_home.cpp',
@@ -381,7 +381,7 @@ kokusei_test = executable(
   'test/dbus/test_network_parse.cpp',
   'test/dbus/test_bluetooth.cpp',
   'test/dbus/test_mpris.cpp',
-  'test/overseer/test_overseer.cpp',
+  'test/launcher/test_launcher.cpp',
   'test/wayland/test_keyboard.cpp',
   'test/wayland/test_active_output.cpp',
   'test/system/test_rfkill.cpp',
@@ -394,8 +394,8 @@ kokusei_test = executable(
   'test/render/test_palette.cpp',
   'test/render/test_image_decode.cpp',
   'test/render/test_text_elide.cpp',
-  'test/penance/test_layout.cpp',
-  'test/resonance/test_fft.cpp',
+  'test/lock/test_layout.cpp',
+  'test/visualizer/test_fft.cpp',
   include_directories: kokusei_inc,
   dependencies: [
     threads_dep,

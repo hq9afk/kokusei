@@ -8,9 +8,9 @@
 
 #include "core/log.h"
 
-#include "modules/blink.h"
-#include "modules/herald.h"
-#include "modules/spark.h"
+#include "modules/idle.h"
+#include "modules/notification.h"
+#include "modules/osd.h"
 
 #include "service/bluetooth_service.h"
 #include "service/brightness_service.h"
@@ -41,9 +41,9 @@ void network_dispatch(WaylandState &app, bool changed) {
 }
 
 void notification_refresh(WaylandState &app) {
-    herald_sync(app.herald, app.notifications);
+    notification_sync(app.notification, app.notifications);
     for (auto &mon : app.outputs)
-        if (auto *nv = mon->module<HeraldViewPerMonitorModule>())
+        if (auto *nv = mon->module<NotificationViewPerMonitorModule>())
             nv->request_frame();
 }
 
@@ -91,7 +91,7 @@ class NotificationBusService final : public Service {
     }
 };
 
-class BrightnessSparkService final : public Service {
+class BrightnessOsdService final : public Service {
   public:
     const char *name() const override { return "brightness"; }
 
@@ -110,19 +110,19 @@ class BrightnessSparkService final : public Service {
                 return;
             float level = brightness_get(app.brightness);
             for (auto &mon : app.outputs) {
-                if (!spark_effective_enabled(app.cfg, mon->output.name))
+                if (!osd_effective_enabled(app.cfg, mon->output.name))
                     continue;
-                SparkState &spark =
-                    mon->module<SparkPerMonitorModule>()->state();
-                spark_show(spark, SparkKind::Brightness, level, false);
-                spark_request_frame(spark);
+                OsdState &osd =
+                    mon->module<OsdPerMonitorModule>()->state();
+                osd_show(osd, OsdKind::Brightness, level, false);
+                osd_request_frame(osd);
             }
         });
         return sources;
     }
 };
 
-class PipewireSparkService final : public Service {
+class PipewireOsdService final : public Service {
   public:
     const char *name() const override { return "pipewire"; }
 
@@ -141,24 +141,24 @@ class PipewireSparkService final : public Service {
                 bool muted = false;
                 float level = pipewire_sink_level(app.pipewire, muted);
                 for (auto &mon : app.outputs) {
-                    if (!spark_effective_enabled(app.cfg, mon->output.name))
+                    if (!osd_effective_enabled(app.cfg, mon->output.name))
                         continue;
-                    SparkState &spark =
-                        mon->module<SparkPerMonitorModule>()->state();
-                    spark_show(spark, SparkKind::Volume, level, muted);
-                    spark_request_frame(spark);
+                    OsdState &osd =
+                        mon->module<OsdPerMonitorModule>()->state();
+                    osd_show(osd, OsdKind::Volume, level, muted);
+                    osd_request_frame(osd);
                 }
             }
             if (change.source) {
                 bool muted = false;
                 float level = pipewire_source_level(app.pipewire, muted);
                 for (auto &mon : app.outputs) {
-                    if (!spark_effective_enabled(app.cfg, mon->output.name))
+                    if (!osd_effective_enabled(app.cfg, mon->output.name))
                         continue;
-                    SparkState &spark =
-                        mon->module<SparkPerMonitorModule>()->state();
-                    spark_show(spark, SparkKind::Mic, level, muted);
-                    spark_request_frame(spark);
+                    OsdState &osd =
+                        mon->module<OsdPerMonitorModule>()->state();
+                    osd_show(osd, OsdKind::Mic, level, muted);
+                    osd_request_frame(osd);
                 }
             }
             if (change.sink || change.source)
@@ -414,12 +414,12 @@ class TextInputProtocolService final : public Service {
     }
 };
 
-class BlinkService final : public Service {
+class IdleService final : public Service {
   public:
-    const char *name() const override { return "blink"; }
+    const char *name() const override { return "idle"; }
 
     bool init(WaylandState &app) override {
-        return blink_init(app.blink, app.seat);
+        return idle_init(app.idle, app.seat);
     }
 
     void timer_tick(WaylandState &app) override {
@@ -427,7 +427,7 @@ class BlinkService final : public Service {
             app.compositor_backend == WaylandState::CompositorBackend::Hyprland
                 ? app.hypr.focused_monitor
                 : std::string();
-        blink_tick(app.blink, focused);
+        idle_tick(app.idle, focused);
     }
 };
 
@@ -436,8 +436,8 @@ class BlinkService final : public Service {
 std::vector<std::unique_ptr<Service>> build_services() {
     std::vector<std::unique_ptr<Service>> services;
     services.push_back(std::make_unique<NotificationBusService>());
-    services.push_back(std::make_unique<BrightnessSparkService>());
-    services.push_back(std::make_unique<PipewireSparkService>());
+    services.push_back(std::make_unique<BrightnessOsdService>());
+    services.push_back(std::make_unique<PipewireOsdService>());
     services.push_back(std::make_unique<UpowerService>());
     services.push_back(std::make_unique<NetworkService>());
     services.push_back(std::make_unique<BluetoothService>());
@@ -445,6 +445,6 @@ std::vector<std::unique_ptr<Service>> build_services() {
     services.push_back(std::make_unique<MprisService>());
     services.push_back(std::make_unique<CompositorWorkspaceService>());
     services.push_back(std::make_unique<TextInputProtocolService>());
-    services.push_back(std::make_unique<BlinkService>());
+    services.push_back(std::make_unique<IdleService>());
     return services;
 }

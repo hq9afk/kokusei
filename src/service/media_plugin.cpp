@@ -592,7 +592,7 @@ extern "C" MediaDecodePlayback kokusei_media_plugin_stream(
     playback.stop_flag = std::make_shared<std::atomic<bool>>(false);
     playback.pause_flag = std::make_shared<std::atomic<bool>>(false);
     playback.status = std::make_shared<std::atomic<MediaDecodeStatus>>(
-        MediaDecodeStatus::Blink);
+        MediaDecodeStatus::Idle);
     playback.egl_import_failed = std::make_shared<std::atomic<bool>>(false);
     playback.worker = std::thread(
         decode_loop, path, filter_desc, fps, supports_row_length,

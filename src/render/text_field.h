@@ -17,7 +17,7 @@ void text_field_backspace(std::string &text);
 struct TextFieldState {
     std::string text;
     std::string preedit;
-    bool cursor_blink_visible = true;
+    bool cursor_idle_visible = true;
     Rect cursor_rect;
 };
 
@@ -28,7 +28,7 @@ TextFieldResult text_field_handle_key(TextFieldState &field,
 
 size_t text_field_utf8_len(const std::string &text);
 
-bool text_field_blink_toggle(TextFieldState &field);
+bool text_field_idle_toggle(TextFieldState &field);
 
 void draw_text_field_caret(Node *parent, const TextFieldState &field,
                            Rect caret, const float *color, bool active);

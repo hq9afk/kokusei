@@ -266,7 +266,7 @@ std::vector<std::string> connectivity_argv() {
     return {"nmcli", "networking", "connectivity", "check"};
 }
 
-void start_if_blink(AsyncProcess &proc, bool &running_flag,
+void start_if_idle(AsyncProcess &proc, bool &running_flag,
                     const std::vector<std::string> &argv,
                     bool merge_stderr = false) {
     if (running_flag)
@@ -297,7 +297,7 @@ void handle_connected_ssid_change(NetworkState &state,
     if (cur == state.prev_connected_ssid)
         return;
     if (!cur.empty()) {
-        start_if_blink(state.connectivity_proc, state.connectivity_running,
+        start_if_idle(state.connectivity_proc, state.connectivity_running,
                        connectivity_argv());
     } else if (!state.ethernet_connected) {
         set_connectivity(state, notify, "unknown");
@@ -355,12 +355,12 @@ bool network_init(NetworkState &state, sdbus::IConnection &bus) {
 
                 if (changed.count("State") ||
                     changed.count("ActiveConnections")) {
-                    start_if_blink(state.device_proc, state.device_running,
+                    start_if_idle(state.device_proc, state.device_running,
                                    device_status_argv());
                     schedule_rescan(state, 1000);
                 }
                 if (changed.count("Connectivity")) {
-                    start_if_blink(state.connectivity_proc,
+                    start_if_idle(state.connectivity_proc,
                                    state.connectivity_running,
                                    connectivity_argv());
                 }
@@ -371,7 +371,7 @@ bool network_init(NetworkState &state, sdbus::IConnection &bus) {
                            .get<bool>();
         state.wifi_enabled = enabled;
 
-        start_if_blink(state.device_proc, state.device_running,
+        start_if_idle(state.device_proc, state.device_running,
                        device_status_argv());
 
         state.init_at =
@@ -396,7 +396,7 @@ void network_scan(NetworkState &state) {
         state.scan_pending = true;
         return;
     }
-    start_if_blink(state.profile_proc, state.profile_running, profile_argv());
+    start_if_idle(state.profile_proc, state.profile_running, profile_argv());
     state.scanning = true;
 }
 
@@ -470,7 +470,7 @@ bool network_poll_device(NetworkState &state, const NetworkNotifyFn &notify) {
     state.ethernet_connection_name = st.ethernet_name;
     if (st.ethernet_connected != was_connected) {
         if (st.ethernet_connected) {
-            start_if_blink(state.connectivity_proc, state.connectivity_running,
+            start_if_idle(state.connectivity_proc, state.connectivity_running,
                            connectivity_argv());
         } else if (state.connected_ssid().empty()) {
             set_connectivity(state, notify, "unknown");
@@ -511,7 +511,7 @@ bool network_poll_profile(NetworkState &state) {
         }
         state.networks = std::move(pre);
     }
-    start_if_blink(state.quick_scan_proc, state.quick_scan_running,
+    start_if_idle(state.quick_scan_proc, state.quick_scan_running,
                    quick_scan_argv());
     return true;
 }
@@ -537,7 +537,7 @@ bool network_poll_quick_scan(NetworkState &state) {
         state.networks = std::move(quick);
         changed = true;
     }
-    start_if_blink(state.scan_proc, state.scan_running, scan_argv());
+    start_if_idle(state.scan_proc, state.scan_running, scan_argv());
     return changed;
 }
 
@@ -689,7 +689,7 @@ bool network_tick(NetworkState &state,
     if (connected) {
         if (now >= state.next_connectivity_check_at) {
             state.next_connectivity_check_at = now + std::chrono::seconds(30);
-            start_if_blink(state.connectivity_proc, state.connectivity_running,
+            start_if_idle(state.connectivity_proc, state.connectivity_running,
                            connectivity_argv());
         }
     } else {

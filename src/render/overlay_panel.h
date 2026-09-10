@@ -112,7 +112,7 @@ overlay_panel_retarget(OverlayPanelBase &base, wl_display *display,
 }
 
 template <typename OnOpen, typename OnClose>
-inline bool panel_penance_toggle(OverlayPanelBase &base, float &locked_center_x,
+inline bool panel_lock_toggle(OverlayPanelBase &base, float &locked_center_x,
                                  float pill_center_x, OnOpen on_open,
                                  OnClose on_close) {
     bool was_open = base.open;

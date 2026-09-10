@@ -8,16 +8,16 @@
 #include "app/module.h"
 #include "app/per_monitor_module.h"
 
-#include "modules/blink.h"
-#include "modules/expanse.h"
-#include "modules/herald.h"
-#include "modules/spark.h"
+#include "modules/idle.h"
+#include "modules/wallpaper.h"
+#include "modules/notification.h"
+#include "modules/osd.h"
 
 struct Config;
 
-class SparkPerMonitorModule final : public PerMonitorModule {
+class OsdPerMonitorModule final : public PerMonitorModule {
   public:
-    SparkState &state() { return state_; }
+    OsdState &state() { return state_; }
 
     bool create_surface(WaylandState &app, MonitorOutput &mon,
                         wl_output *output) override;
@@ -28,10 +28,10 @@ class SparkPerMonitorModule final : public PerMonitorModule {
     void tick(WaylandState &app, MonitorOutput &mon) override;
 
   private:
-    SparkState state_;
+    OsdState state_;
 };
 
-class ExpansePerMonitorModule final : public PerMonitorModule {
+class WallpaperPerMonitorModule final : public PerMonitorModule {
   public:
     bool create_surface(WaylandState &app, MonitorOutput &mon,
                         wl_output *output) override;
@@ -46,13 +46,13 @@ class ExpansePerMonitorModule final : public PerMonitorModule {
     void pause_animation();
     void resume_animation();
     MediaDecodeStatus decode_status(int column_index) const;
-    const ExpanseState &expanse_state() const { return state_; }
+    const WallpaperState &wallpaper_state() const { return state_; }
 
   private:
-    ExpanseState state_;
+    WallpaperState state_;
 };
 
-class BlinkPerMonitorModule final : public PerMonitorModule {
+class IdlePerMonitorModule final : public PerMonitorModule {
   public:
     bool create_surface(WaylandState &app, MonitorOutput &mon,
                         wl_output *output) override;
@@ -63,11 +63,11 @@ class BlinkPerMonitorModule final : public PerMonitorModule {
     void timer_tick(WaylandState &app, MonitorOutput &mon) override;
 
   private:
-    BlinkOverlayState state_;
+    IdleOverlayState state_;
     bool screensaver_was_active_ = false;
 };
 
-class HeraldViewPerMonitorModule final : public PerMonitorModule {
+class NotificationViewPerMonitorModule final : public PerMonitorModule {
   public:
     bool create_surface(WaylandState &app, MonitorOutput &mon,
                         wl_output *output) override;
@@ -86,7 +86,7 @@ class HeraldViewPerMonitorModule final : public PerMonitorModule {
     void resync(WaylandState &app, MonitorOutput &mon);
 
   private:
-    HeraldView state_;
+    NotificationView state_;
 };
 
 std::vector<std::unique_ptr<Module>> build_app_modules();
@@ -94,16 +94,16 @@ std::vector<std::unique_ptr<PerMonitorModule>> build_per_monitor_modules();
 
 struct WaylandState;
 
-struct TrullaEnv {
+struct SettingsEnv {
     std::function<std::vector<std::string>()> monitor_names_fn;
     std::function<std::string()> focused_monitor_fn;
     std::function<MediaDecodeStatus(const std::string &, int)> decode_status_fn;
 };
 
-TrullaEnv trulla_env(WaylandState &app);
+SettingsEnv settings_env(WaylandState &app);
 
-void penance_notify_output_added(WaylandState &app, wl_output *output,
+void lock_notify_output_added(WaylandState &app, wl_output *output,
                                  const char *name);
-void penance_notify_output_removed(WaylandState &app, wl_output *output);
-bool penance_is_locked(WaylandState &app);
-void penance_start(WaylandState &app);
+void lock_notify_output_removed(WaylandState &app, wl_output *output);
+bool lock_is_locked(WaylandState &app);
+void lock_start(WaylandState &app);

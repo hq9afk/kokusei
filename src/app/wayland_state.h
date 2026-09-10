@@ -10,8 +10,8 @@
 #include "app/module.h"
 #include "app/service.h"
 
-#include "modules/blink.h"
-#include "modules/herald.h"
+#include "modules/idle.h"
+#include "modules/notification.h"
 
 #include "render/renderer.h"
 
@@ -54,8 +54,8 @@ struct WaylandState {
     bool running = true;
     bool session_locked = false;
     Renderer renderer;
-    BlinkState blink;
-    HeraldService herald;
+    IdleState idle;
+    NotificationRenderModel notification;
     NotificationService notifications;
     std::vector<std::unique_ptr<Module>> overlays;
     std::vector<std::unique_ptr<Service>> services;
@@ -76,8 +76,8 @@ struct WaylandState {
     int config_watch_fd = -1;
     bool config_own_write_pending = false;
     MonitorOutput *last_pointer_monitor = nullptr;
-    bool trulla_enabled = false;
-    wl_output *trulla_bound_output = nullptr;
+    bool settings_enabled = false;
+    wl_output *settings_bound_output = nullptr;
     enum class CompositorBackend { None, Hyprland };
     CompositorBackend compositor_backend = CompositorBackend::None;
     HyprlandState hypr;

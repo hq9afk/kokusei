@@ -8,7 +8,11 @@ cmd_setup() {
 }
 
 cmd_build() {
-	meson setup --prefix=/usr --reconfigure build
+	if [ -d build ]; then
+		meson setup --prefix=/usr --reconfigure build
+	else
+		meson setup --prefix=/usr build
+	fi
 	ninja -C build -j "${KOKUSEI_BUILD_JOBS:-4}"
 }
 
@@ -18,10 +22,9 @@ cmd_test() { cmd_build; meson test -C build --print-errorlogs; }
 cmd_uninstall() { sudo ninja -C build uninstall; }
 
 main() {
-	local cmd="${1:-}"
+	local cmd="${1:-build}"
 	case "$cmd" in
 		setup|build|install|run|test|uninstall) "cmd_$cmd" ;;
-		"") echo "usage: $0 <setup|build|install|run|test|uninstall>" >&2; exit 2 ;;
 		*) echo "unknown command: $cmd" >&2; exit 2 ;;
 	esac
 }

@@ -7,69 +7,69 @@
 #include <vector>
 
 #include "config/rain_config.h"
-#include "config/resonance_config.h"
+#include "config/visualizer_config.h"
 
-inline std::string default_expanse_dir() {
+inline std::string default_wallpaper_dir() {
     const char *home = getenv("HOME");
     return std::string(home ? home : "") + "/Pictures";
 }
 
-inline std::string default_animated_expanse_dir() {
+inline std::string default_animated_wallpaper_dir() {
     const char *home = getenv("HOME");
     return std::string(home ? home : "") + "/Videos";
 }
 
 struct MonitorOverride {
     bool enabled = false;
-    bool spark = true;
-    bool heralds = true;
+    bool osd = true;
+    bool notifications = true;
     bool autohide = false;
     bool ambient_enabled = true;
     uint32_t ambient_timeout_seconds = 150;
     bool screensaver_enabled = true;
     uint32_t screensaver_timeout_seconds = 300;
-    bool penance = true;
+    bool lock = true;
 
     bool operator==(const MonitorOverride &) const = default;
 };
 
 struct Config {
-    std::string expanse_path = KOKUSEI_DEFAULT_WALLPAPER;
-    std::string expanse_dir = default_expanse_dir();
+    std::string wallpaper_path = KOKUSEI_DEFAULT_WALLPAPER;
+    std::string wallpaper_dir = default_wallpaper_dir();
 
-    std::map<std::string, std::vector<std::string>> expanse_columns;
-    std::map<std::string, int> expanse_column_counts;
-    std::map<std::string, std::vector<std::string>> expanse_fill_modes;
+    std::map<std::string, std::vector<std::string>> wallpaper_columns;
+    std::map<std::string, int> wallpaper_column_counts;
+    std::map<std::string, std::vector<std::string>> wallpaper_fill_modes;
 
-    bool expanse_animated_enabled = false;
-    std::string expanse_animated_dir = default_animated_expanse_dir();
-    std::map<std::string, std::vector<std::string>> expanse_animated_columns;
-    std::map<std::string, int> expanse_animated_column_counts;
-    std::map<std::string, std::vector<std::string>> expanse_animated_fill_modes;
+    bool wallpaper_animated_enabled = false;
+    std::string wallpaper_animated_dir = default_animated_wallpaper_dir();
+    std::map<std::string, std::vector<std::string>> wallpaper_animated_columns;
+    std::map<std::string, int> wallpaper_animated_column_counts;
+    std::map<std::string, std::vector<std::string>> wallpaper_animated_fill_modes;
 
     bool autohide = false;
-    bool default_spark_enabled = true;
-    bool default_heralds_enabled = true;
-    bool default_expanse_enabled = true;
-    bool default_penance_panel_enabled = true;
+    bool default_osd_enabled = true;
+    bool default_notifications_enabled = true;
+    bool default_wallpaper_enabled = true;
+    bool default_lock_panel_enabled = true;
     std::map<std::string, MonitorOverride> monitor_overrides;
 
-    bool starward_animated_logo = true;
+    bool logout_animated_logo = true;
 
-    bool blink_management_enabled = true;
+    bool idle_management_enabled = true;
     bool ambient_enabled = true;
     uint32_t ambient_timeout_seconds = 150;
     bool screensaver_enabled = true;
     uint32_t screensaver_timeout_seconds = 300;
 
-    ResonanceParams resonance;
+    VisualizerParams visualizer;
     RainParams rain;
 };
 
-bool spark_effective_enabled(const Config &cfg,
+bool osd_effective_enabled(const Config &cfg,
                              const std::string &monitor_name);
 
-bool heralds_effective_enabled(const Config &cfg,
+bool notifications_effective_enabled(const Config &cfg,
                                const std::string &monitor_name);
 
 bool autohide_effective_enabled(const Config &cfg,
@@ -87,7 +87,7 @@ bool screensaver_effective_enabled(const Config &cfg,
 uint32_t screensaver_effective_timeout_seconds(const Config &cfg,
                                                const std::string &monitor_name);
 
-bool penance_effective_enabled(const Config &cfg,
+bool lock_effective_enabled(const Config &cfg,
                                const std::string &monitor_name);
 
 std::string config_path();

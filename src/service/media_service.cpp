@@ -276,7 +276,7 @@ void media_decode_release_drm_frame(void *avframe_handle) {
 }
 
 MediaDecodeStatus media_decode_status(const MediaDecodePlayback &playback) {
-    return playback.status ? playback.status->load() : MediaDecodeStatus::Blink;
+    return playback.status ? playback.status->load() : MediaDecodeStatus::Idle;
 }
 
 std::string animate_cache_home_dir() {

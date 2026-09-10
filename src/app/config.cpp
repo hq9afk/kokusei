@@ -11,20 +11,20 @@
 #include "core/log.h"
 #include "core/path_home.h"
 
-bool spark_effective_enabled(const Config &cfg,
+bool osd_effective_enabled(const Config &cfg,
                              const std::string &monitor_name) {
     auto it = cfg.monitor_overrides.find(monitor_name);
     if (it != cfg.monitor_overrides.end() && it->second.enabled)
-        return it->second.spark;
-    return cfg.default_spark_enabled;
+        return it->second.osd;
+    return cfg.default_osd_enabled;
 }
 
-bool heralds_effective_enabled(const Config &cfg,
+bool notifications_effective_enabled(const Config &cfg,
                                const std::string &monitor_name) {
     auto it = cfg.monitor_overrides.find(monitor_name);
     if (it != cfg.monitor_overrides.end() && it->second.enabled)
-        return it->second.heralds;
-    return cfg.default_heralds_enabled;
+        return it->second.notifications;
+    return cfg.default_notifications_enabled;
 }
 
 bool autohide_effective_enabled(const Config &cfg,
@@ -37,7 +37,7 @@ bool autohide_effective_enabled(const Config &cfg,
 
 bool ambient_effective_enabled(const Config &cfg,
                                const std::string &monitor_name) {
-    if (!cfg.blink_management_enabled)
+    if (!cfg.idle_management_enabled)
         return false;
     auto it = cfg.monitor_overrides.find(monitor_name);
     if (it != cfg.monitor_overrides.end() && it->second.enabled)
@@ -55,7 +55,7 @@ uint32_t ambient_effective_timeout_seconds(const Config &cfg,
 
 bool screensaver_effective_enabled(const Config &cfg,
                                    const std::string &monitor_name) {
-    if (!cfg.blink_management_enabled)
+    if (!cfg.idle_management_enabled)
         return false;
     auto it = cfg.monitor_overrides.find(monitor_name);
     if (it != cfg.monitor_overrides.end() && it->second.enabled)
@@ -72,12 +72,12 @@ screensaver_effective_timeout_seconds(const Config &cfg,
     return cfg.screensaver_timeout_seconds;
 }
 
-bool penance_effective_enabled(const Config &cfg,
+bool lock_effective_enabled(const Config &cfg,
                                const std::string &monitor_name) {
     auto it = cfg.monitor_overrides.find(monitor_name);
     if (it != cfg.monitor_overrides.end() && it->second.enabled)
-        return it->second.penance;
-    return cfg.default_penance_panel_enabled;
+        return it->second.lock;
+    return cfg.default_lock_panel_enabled;
 }
 
 std::string config_path() {
@@ -90,8 +90,8 @@ std::string config_path() {
 namespace {
 
 bool is_reserved_displays_key(const std::string &key) {
-    return key == "defaultSpark" || key == "defaultHeralds" ||
-           key == "defaultExpanse" || key == "defaultPenance" ||
+    return key == "defaultOsd" || key == "defaultNotifications" ||
+           key == "defaultWallpaper" || key == "defaultLock" ||
            key == "defaultOsd" || key == "defaultNotifications" ||
            key == "defaultWallpaper" || key == "defaultLock";
 }
@@ -143,74 +143,75 @@ Config load_config() {
             return cfg;
         nlohmann::json j = nlohmann::json::parse(f);
 
-        nlohmann::json qixing = section(j, "qixing", "bar");
-        cfg.autohide = qixing.value("autohideEnabled", cfg.autohide);
+        nlohmann::json bar = section(j, "bar", "qixing");
+        cfg.autohide = bar.value("autohideEnabled", cfg.autohide);
 
-        nlohmann::json expanse = section(j, "expanse", "wallpaper");
-        cfg.expanse_dir = expanse.value("dir", cfg.expanse_dir);
-        if (auto it = expanse.find("columns");
-            it != expanse.end() && it->is_object())
+        nlohmann::json wallpaper = section(j, "wallpaper", "expanse");
+        cfg.wallpaper_dir = wallpaper.value("dir", cfg.wallpaper_dir);
+        if (auto it = wallpaper.find("columns");
+            it != wallpaper.end() && it->is_object())
             for (const auto &[name, val] : it->items())
                 if (val.is_array())
-                    cfg.expanse_columns[name] =
+                    cfg.wallpaper_columns[name] =
                         val.get<std::vector<std::string>>();
-        if (auto it = expanse.find("columnCounts");
-            it != expanse.end() && it->is_object())
+        if (auto it = wallpaper.find("columnCounts");
+            it != wallpaper.end() && it->is_object())
             for (const auto &[name, val] : it->items())
                 if (val.is_number_integer())
-                    cfg.expanse_column_counts[name] = val.get<int>();
-        if (auto it = expanse.find("fillModes");
-            it != expanse.end() && it->is_object())
+                    cfg.wallpaper_column_counts[name] = val.get<int>();
+        if (auto it = wallpaper.find("fillModes");
+            it != wallpaper.end() && it->is_object())
             for (const auto &[name, val] : it->items())
                 if (val.is_array())
-                    cfg.expanse_fill_modes[name] =
+                    cfg.wallpaper_fill_modes[name] =
                         val.get<std::vector<std::string>>();
-        cfg.expanse_animated_enabled =
-            expanse.value("animatedEnabled", cfg.expanse_animated_enabled);
-        cfg.expanse_animated_dir =
-            expanse.value("animatedDir", cfg.expanse_animated_dir);
-        if (auto it = expanse.find("animatedColumns");
-            it != expanse.end() && it->is_object())
+        cfg.wallpaper_animated_enabled =
+            wallpaper.value("animatedEnabled", cfg.wallpaper_animated_enabled);
+        cfg.wallpaper_animated_dir =
+            wallpaper.value("animatedDir", cfg.wallpaper_animated_dir);
+        if (auto it = wallpaper.find("animatedColumns");
+            it != wallpaper.end() && it->is_object())
             for (const auto &[name, val] : it->items())
                 if (val.is_array())
-                    cfg.expanse_animated_columns[name] =
+                    cfg.wallpaper_animated_columns[name] =
                         val.get<std::vector<std::string>>();
-        if (auto it = expanse.find("animatedColumnCounts");
-            it != expanse.end() && it->is_object())
+        if (auto it = wallpaper.find("animatedColumnCounts");
+            it != wallpaper.end() && it->is_object())
             for (const auto &[name, val] : it->items())
                 if (val.is_number_integer())
-                    cfg.expanse_animated_column_counts[name] = val.get<int>();
-        if (auto it = expanse.find("animatedFillModes");
-            it != expanse.end() && it->is_object())
+                    cfg.wallpaper_animated_column_counts[name] = val.get<int>();
+        if (auto it = wallpaper.find("animatedFillModes");
+            it != wallpaper.end() && it->is_object())
             for (const auto &[name, val] : it->items())
                 if (val.is_array())
-                    cfg.expanse_animated_fill_modes[name] =
+                    cfg.wallpaper_animated_fill_modes[name] =
                         val.get<std::vector<std::string>>();
 
-        cfg.expanse_dir = path_expand_home(cfg.expanse_dir);
-        cfg.expanse_animated_dir = path_expand_home(cfg.expanse_animated_dir);
-        expand_column_paths(cfg.expanse_columns);
-        expand_column_paths(cfg.expanse_animated_columns);
+        cfg.wallpaper_dir = path_expand_home(cfg.wallpaper_dir);
+        cfg.wallpaper_animated_dir = path_expand_home(cfg.wallpaper_animated_dir);
+        expand_column_paths(cfg.wallpaper_columns);
+        expand_column_paths(cfg.wallpaper_animated_columns);
 
         nlohmann::json displays = j.value("displays", nlohmann::json::object());
-        cfg.default_spark_enabled = pick(displays, "defaultSpark", "defaultOsd",
-                                         cfg.default_spark_enabled);
-        cfg.default_heralds_enabled =
-            pick(displays, "defaultHeralds", "defaultNotifications",
-                 cfg.default_heralds_enabled);
-        cfg.default_expanse_enabled =
-            pick(displays, "defaultExpanse", "defaultWallpaper",
-                 cfg.default_expanse_enabled);
-        cfg.default_penance_panel_enabled =
-            pick(displays, "defaultPenance", "defaultLock",
-                 cfg.default_penance_panel_enabled);
+        cfg.default_osd_enabled = pick(displays, "defaultOsd", "defaultSpark",
+                                         cfg.default_osd_enabled);
+        cfg.default_notifications_enabled =
+            pick(displays, "defaultNotifications", "defaultHeralds",
+                 cfg.default_notifications_enabled);
+        cfg.default_wallpaper_enabled =
+            pick(displays, "defaultWallpaper", "defaultExpanse",
+                 cfg.default_wallpaper_enabled);
+        cfg.default_lock_panel_enabled =
+            pick(displays, "defaultLock", "defaultPenance",
+                 cfg.default_lock_panel_enabled);
         for (const auto &[name, val] : displays.items()) {
             if (is_reserved_displays_key(name) || !val.is_object())
                 continue;
             MonitorOverride mo;
             mo.enabled = val.value("_enabled", mo.enabled);
-            mo.spark = pick(val, "spark", "osd", mo.spark);
-            mo.heralds = pick(val, "heralds", "notifications", mo.heralds);
+            mo.osd = pick(val, "osd", "spark", mo.osd);
+            mo.notifications =
+                pick(val, "notifications", "heralds", mo.notifications);
             mo.autohide = val.value("autohide", mo.autohide);
             mo.ambient_enabled =
                 val.value("ambientEnabled", mo.ambient_enabled);
@@ -220,51 +221,50 @@ Config load_config() {
                 val.value("screensaverEnabled", mo.screensaver_enabled);
             mo.screensaver_timeout_seconds = val.value(
                 "screensaverTimeoutSeconds", mo.screensaver_timeout_seconds);
-            mo.penance = pick(val, "penance", "lock", mo.penance);
+            mo.lock = pick(val, "lock", "penance", mo.lock);
             cfg.monitor_overrides[name] = mo;
         }
 
-        nlohmann::json starward = j.value("starward", nlohmann::json::object());
-        cfg.starward_animated_logo =
-            starward.value("animatedLogo", cfg.starward_animated_logo);
+        nlohmann::json logout = section(j, "logout", "starward");
+        cfg.logout_animated_logo =
+            logout.value("animatedLogo", cfg.logout_animated_logo);
 
-        nlohmann::json blink = section(j, "blink", "idle");
-        cfg.blink_management_enabled =
-            blink.value("enabled", cfg.blink_management_enabled);
+        nlohmann::json idle = section(j, "idle", "blink");
+        cfg.idle_management_enabled =
+            idle.value("enabled", cfg.idle_management_enabled);
         cfg.ambient_enabled =
-            blink.value("ambientEnabled", cfg.ambient_enabled);
+            idle.value("ambientEnabled", cfg.ambient_enabled);
         cfg.ambient_timeout_seconds =
-            blink.value("ambientTimeoutSeconds", cfg.ambient_timeout_seconds);
+            idle.value("ambientTimeoutSeconds", cfg.ambient_timeout_seconds);
         cfg.screensaver_enabled =
-            blink.value("screensaverEnabled", cfg.screensaver_enabled);
-        cfg.screensaver_timeout_seconds = blink.value(
+            idle.value("screensaverEnabled", cfg.screensaver_enabled);
+        cfg.screensaver_timeout_seconds = idle.value(
             "screensaverTimeoutSeconds", cfg.screensaver_timeout_seconds);
 
-        nlohmann::json resonance =
-            j.value("resonance", nlohmann::json::object());
-        cfg.resonance.fps =
-            std::clamp(resonance.value("fps", cfg.resonance.fps),
-                       kResonanceFpsMin, kResonanceFpsMax);
-        cfg.resonance.particle_thin = std::clamp(
-            resonance.value("particleThin", cfg.resonance.particle_thin),
-            kResonanceParticleThinMin, kResonanceParticleThinMax);
-        cfg.resonance.particle_size = std::clamp(
-            resonance.value("particleSize", cfg.resonance.particle_size),
-            kResonanceParticleSizeMin, kResonanceParticleSizeMax);
-        cfg.resonance.fractal_complexity =
-            std::clamp(resonance.value("fractalComplexity",
-                                       cfg.resonance.fractal_complexity),
-                       kResonanceComplexityMin, kResonanceComplexityMax);
-        cfg.resonance.glow_directions = std::clamp(
-            resonance.value("glowDirections", cfg.resonance.glow_directions),
-            kResonanceGlowDirectionsMin, kResonanceGlowDirectionsMax);
-        cfg.resonance.glow_quality = std::clamp(
-            resonance.value("glowQuality", cfg.resonance.glow_quality),
-            kResonanceGlowQualityMin, kResonanceGlowQualityMax);
-        cfg.resonance.visualizer_shape =
-            resonance.value("visualizerShape", std::string("bar")) == "sphere"
-                ? ResonanceVisualizerShape::Sphere
-                : ResonanceVisualizerShape::Bar;
+        nlohmann::json visualizer = section(j, "visualizer", "resonance");
+        cfg.visualizer.fps =
+            std::clamp(visualizer.value("fps", cfg.visualizer.fps),
+                       kVisualizerFpsMin, kVisualizerFpsMax);
+        cfg.visualizer.particle_thin = std::clamp(
+            visualizer.value("particleThin", cfg.visualizer.particle_thin),
+            kVisualizerParticleThinMin, kVisualizerParticleThinMax);
+        cfg.visualizer.particle_size = std::clamp(
+            visualizer.value("particleSize", cfg.visualizer.particle_size),
+            kVisualizerParticleSizeMin, kVisualizerParticleSizeMax);
+        cfg.visualizer.fractal_complexity =
+            std::clamp(visualizer.value("fractalComplexity",
+                                       cfg.visualizer.fractal_complexity),
+                       kVisualizerComplexityMin, kVisualizerComplexityMax);
+        cfg.visualizer.glow_directions = std::clamp(
+            visualizer.value("glowDirections", cfg.visualizer.glow_directions),
+            kVisualizerGlowDirectionsMin, kVisualizerGlowDirectionsMax);
+        cfg.visualizer.glow_quality = std::clamp(
+            visualizer.value("glowQuality", cfg.visualizer.glow_quality),
+            kVisualizerGlowQualityMin, kVisualizerGlowQualityMax);
+        cfg.visualizer.visualizer_shape =
+            visualizer.value("visualizerShape", std::string("bar")) == "sphere"
+                ? VisualizerShape::Sphere
+                : VisualizerShape::Bar;
 
         nlohmann::json rain = j.value("rain", nlohmann::json::object());
         cfg.rain.mode = rain.value("mode", std::string("matrix")) == "stiletto"
@@ -302,53 +302,53 @@ void save_config(const Config &cfg) {
     if (path.empty())
         return;
 
-    nlohmann::json expanse;
-    expanse["dir"] = path_collapse_home(cfg.expanse_dir);
-    expanse["columns"] = collapsed_column_paths(cfg.expanse_columns);
-    expanse["columnCounts"] = cfg.expanse_column_counts;
-    expanse["fillModes"] = cfg.expanse_fill_modes;
-    expanse["animatedEnabled"] = cfg.expanse_animated_enabled;
-    expanse["animatedDir"] = path_collapse_home(cfg.expanse_animated_dir);
-    expanse["animatedColumns"] =
-        collapsed_column_paths(cfg.expanse_animated_columns);
-    expanse["animatedColumnCounts"] = cfg.expanse_animated_column_counts;
-    expanse["animatedFillModes"] = cfg.expanse_animated_fill_modes;
+    nlohmann::json wallpaper;
+    wallpaper["dir"] = path_collapse_home(cfg.wallpaper_dir);
+    wallpaper["columns"] = collapsed_column_paths(cfg.wallpaper_columns);
+    wallpaper["columnCounts"] = cfg.wallpaper_column_counts;
+    wallpaper["fillModes"] = cfg.wallpaper_fill_modes;
+    wallpaper["animatedEnabled"] = cfg.wallpaper_animated_enabled;
+    wallpaper["animatedDir"] = path_collapse_home(cfg.wallpaper_animated_dir);
+    wallpaper["animatedColumns"] =
+        collapsed_column_paths(cfg.wallpaper_animated_columns);
+    wallpaper["animatedColumnCounts"] = cfg.wallpaper_animated_column_counts;
+    wallpaper["animatedFillModes"] = cfg.wallpaper_animated_fill_modes;
 
     nlohmann::json displays;
-    displays["defaultSpark"] = cfg.default_spark_enabled;
-    displays["defaultHeralds"] = cfg.default_heralds_enabled;
-    displays["defaultExpanse"] = cfg.default_expanse_enabled;
-    displays["defaultPenance"] = cfg.default_penance_panel_enabled;
+    displays["defaultOsd"] = cfg.default_osd_enabled;
+    displays["defaultNotifications"] = cfg.default_notifications_enabled;
+    displays["defaultWallpaper"] = cfg.default_wallpaper_enabled;
+    displays["defaultLock"] = cfg.default_lock_panel_enabled;
     for (const auto &[name, ov] : cfg.monitor_overrides) {
         nlohmann::json mo;
         mo["_enabled"] = ov.enabled;
-        mo["spark"] = ov.spark;
-        mo["heralds"] = ov.heralds;
+        mo["osd"] = ov.osd;
+        mo["notifications"] = ov.notifications;
         mo["autohide"] = ov.autohide;
         mo["ambientEnabled"] = ov.ambient_enabled;
         mo["ambientTimeoutSeconds"] = ov.ambient_timeout_seconds;
         mo["screensaverEnabled"] = ov.screensaver_enabled;
         mo["screensaverTimeoutSeconds"] = ov.screensaver_timeout_seconds;
-        mo["penance"] = ov.penance;
+        mo["lock"] = ov.lock;
         displays[name] = mo;
     }
 
-    nlohmann::json blink;
-    blink["enabled"] = cfg.blink_management_enabled;
-    blink["ambientEnabled"] = cfg.ambient_enabled;
-    blink["ambientTimeoutSeconds"] = cfg.ambient_timeout_seconds;
-    blink["screensaverEnabled"] = cfg.screensaver_enabled;
-    blink["screensaverTimeoutSeconds"] = cfg.screensaver_timeout_seconds;
+    nlohmann::json idle;
+    idle["enabled"] = cfg.idle_management_enabled;
+    idle["ambientEnabled"] = cfg.ambient_enabled;
+    idle["ambientTimeoutSeconds"] = cfg.ambient_timeout_seconds;
+    idle["screensaverEnabled"] = cfg.screensaver_enabled;
+    idle["screensaverTimeoutSeconds"] = cfg.screensaver_timeout_seconds;
 
-    nlohmann::json resonance;
-    resonance["fps"] = cfg.resonance.fps;
-    resonance["particleThin"] = cfg.resonance.particle_thin;
-    resonance["particleSize"] = cfg.resonance.particle_size;
-    resonance["fractalComplexity"] = cfg.resonance.fractal_complexity;
-    resonance["glowDirections"] = cfg.resonance.glow_directions;
-    resonance["glowQuality"] = cfg.resonance.glow_quality;
-    resonance["visualizerShape"] =
-        cfg.resonance.visualizer_shape == ResonanceVisualizerShape::Sphere
+    nlohmann::json visualizer;
+    visualizer["fps"] = cfg.visualizer.fps;
+    visualizer["particleThin"] = cfg.visualizer.particle_thin;
+    visualizer["particleSize"] = cfg.visualizer.particle_size;
+    visualizer["fractalComplexity"] = cfg.visualizer.fractal_complexity;
+    visualizer["glowDirections"] = cfg.visualizer.glow_directions;
+    visualizer["glowQuality"] = cfg.visualizer.glow_quality;
+    visualizer["visualizerShape"] =
+        cfg.visualizer.visualizer_shape == VisualizerShape::Sphere
             ? "sphere"
             : "bar";
 
@@ -357,12 +357,12 @@ void save_config(const Config &cfg) {
     rain["asyncSpeed"] = cfg.rain.async_speed;
 
     nlohmann::json j;
-    j["qixing"] = {{"autohideEnabled", cfg.autohide}};
-    j["expanse"] = expanse;
+    j["bar"] = {{"autohideEnabled", cfg.autohide}};
+    j["wallpaper"] = wallpaper;
     j["displays"] = displays;
-    j["starward"] = {{"animatedLogo", cfg.starward_animated_logo}};
-    j["blink"] = blink;
-    j["resonance"] = resonance;
+    j["logout"] = {{"animatedLogo", cfg.logout_animated_logo}};
+    j["idle"] = idle;
+    j["visualizer"] = visualizer;
     j["rain"] = rain;
 
     if (!write_file_atomic(path, j.dump(2)))

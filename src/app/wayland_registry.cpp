@@ -9,7 +9,7 @@
 
 #include "core/log.h"
 
-#include "modules/qixing.h"
+#include "modules/bar.h"
 
 namespace {
 
@@ -21,7 +21,7 @@ void layer_surface_configure(void *data, zwlr_layer_surface_v1 *layer_surface,
     if (mon->egl_window) {
         int32_t scale = mon->output_scale.scale;
         wl_egl_window_resize(mon->egl_window, mon->width * scale,
-                             qixing_detail::qixing_current_height(*mon) * scale,
+                             bar_detail::bar_current_height(*mon) * scale,
                              0, 0);
     }
     mon->configured = true;
@@ -49,7 +49,7 @@ void done(void *data, wl_output *) {
     if (!mon->activated && mon->app->egl_context != EGL_NO_CONTEXT)
         monitor_output_activate(*mon->app, *mon);
     if (first_done)
-        penance_notify_output_added(*mon->app, mon->output.wl,
+        lock_notify_output_added(*mon->app, mon->output.wl,
                                     mon->output.name.c_str());
 }
 
@@ -104,7 +104,7 @@ void registry_global(void *data, wl_registry *registry, uint32_t name,
         state->seat_caps.pointer = &state->pointer;
         keyboard_attach_seat(state->seat_caps, state->seat);
     } else if (strcmp(interface, ext_idle_notifier_v1_interface.name) == 0) {
-        state->blink.notifier =
+        state->idle.notifier =
             static_cast<ext_idle_notifier_v1 *>(wl_registry_bind(
                 registry, name, &ext_idle_notifier_v1_interface, 1));
     } else if (strcmp(interface, wp_cursor_shape_manager_v1_interface.name) ==
@@ -144,7 +144,7 @@ void registry_global_remove(void *data, wl_registry *, uint32_t name) {
     if (it == state->outputs.end())
         return;
     klog("output: '%s' removed", (*it)->output.name.c_str());
-    penance_notify_output_removed(*state, (*it)->output.wl);
+    lock_notify_output_removed(*state, (*it)->output.wl);
     if (state->last_pointer_monitor == it->get())
         state->last_pointer_monitor = nullptr;
     monitor_output_destroy(**it);
@@ -158,7 +158,7 @@ const wl_registry_listener registry_listener = {
     .global_remove = registry_global_remove,
 };
 
-const zwlr_layer_surface_v1_listener qixing_layer_surface_listener = {
+const zwlr_layer_surface_v1_listener bar_layer_surface_listener = {
     .configure = layer_surface_configure,
     .closed = layer_surface_closed,
 };

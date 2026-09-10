@@ -72,24 +72,24 @@ void test_config_watch() {
 void test_monitor_overrides() {
     Config cfg;
 
-    assert(spark_effective_enabled(cfg, "DP-1") == cfg.default_spark_enabled);
-    assert(heralds_effective_enabled(cfg, "DP-1") ==
-           cfg.default_heralds_enabled);
+    assert(osd_effective_enabled(cfg, "DP-1") == cfg.default_osd_enabled);
+    assert(notifications_effective_enabled(cfg, "DP-1") ==
+           cfg.default_notifications_enabled);
     assert(autohide_effective_enabled(cfg, "DP-1") == cfg.autohide);
 
     cfg.monitor_overrides["DP-1"] = MonitorOverride{
-        .enabled = false, .spark = false, .heralds = false, .autohide = true};
-    assert(spark_effective_enabled(cfg, "DP-1") == cfg.default_spark_enabled);
+        .enabled = false, .osd = false, .notifications = false, .autohide = true};
+    assert(osd_effective_enabled(cfg, "DP-1") == cfg.default_osd_enabled);
 
     cfg.monitor_overrides["DP-1"].enabled = true;
-    assert(spark_effective_enabled(cfg, "DP-1") == false);
-    assert(heralds_effective_enabled(cfg, "DP-1") == false);
+    assert(osd_effective_enabled(cfg, "DP-1") == false);
+    assert(notifications_effective_enabled(cfg, "DP-1") == false);
     assert(autohide_effective_enabled(cfg, "DP-1") == true);
 
-    assert(spark_effective_enabled(cfg, "HDMI-1") == cfg.default_spark_enabled);
+    assert(osd_effective_enabled(cfg, "HDMI-1") == cfg.default_osd_enabled);
 
-    assert(penance_effective_enabled(cfg, "HDMI-1") ==
-           cfg.default_penance_panel_enabled);
-    cfg.monitor_overrides["DP-1"].penance = false;
-    assert(penance_effective_enabled(cfg, "DP-1") == false);
+    assert(lock_effective_enabled(cfg, "HDMI-1") ==
+           cfg.default_lock_panel_enabled);
+    cfg.monitor_overrides["DP-1"].lock = false;
+    assert(lock_effective_enabled(cfg, "DP-1") == false);
 }

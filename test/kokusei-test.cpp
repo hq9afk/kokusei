@@ -12,7 +12,7 @@ int main() {
         {"config", test_config},
         {"config_watch", test_config_watch},
         {"monitor_overrides", test_monitor_overrides},
-        {"wallpaper_resolve", test_expanse_resolve},
+        {"wallpaper_resolve", test_wallpaper_resolve},
 
         {"async_process", test_async_process},
         {"deferred_call", test_deferred_call},
@@ -47,8 +47,8 @@ int main() {
         {"palette", test_palette},
         {"image_decode", test_image_decode},
         {"text_elide", test_text_elide},
-        {"lock_layout", test_penance_layout},
-        {"resonance_fft", test_resonance_fft},
+        {"lock_layout", test_lock_layout},
+        {"visualizer_fft", test_visualizer_fft},
     };
     for (auto &c : cases) {
         std::printf("[ RUN ] %s\n", c.name);

@@ -58,15 +58,15 @@ enum class PanelClickKind {
     TabSelect,
     ToggleFlip,
     FieldFocus,
-    ExpanseSelect,
+    WallpaperSelect,
     MonitorSelect,
     RegionSelect,
-    AnimatedExpanseSelect,
+    AnimatedWallpaperSelect,
     AnimatedRegionSelect,
     MediaPlayPause,
     MediaNext,
     MediaPrevious,
-    ProfileTrulla,
+    ProfileSettings,
 };
 struct PanelClickRegion {
     PanelClickKind kind;

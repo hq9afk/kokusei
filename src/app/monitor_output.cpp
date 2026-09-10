@@ -5,12 +5,12 @@
 
 #include "core/log.h"
 
-#include "modules/qixing.h"
-#include "modules/trulla.h"
+#include "modules/bar.h"
+#include "modules/settings.h"
 
 #include "render/overlay_panel.h"
 
-#include "service/trulla_service.h"
+#include "service/settings_service.h"
 
 void monitor_output_destroy(MonitorOutput &mon) {
     for (auto &m : mon.modules)
@@ -101,31 +101,31 @@ int monitor_active_workspace_id(const MonitorOutput &mon) {
 }
 
 void apply_config_update(WaylandState &app, Config new_cfg) {
-    bool blink_changed =
-        app.cfg.blink_management_enabled != new_cfg.blink_management_enabled ||
+    bool idle_changed =
+        app.cfg.idle_management_enabled != new_cfg.idle_management_enabled ||
         app.cfg.ambient_enabled != new_cfg.ambient_enabled ||
         app.cfg.ambient_timeout_seconds != new_cfg.ambient_timeout_seconds ||
         app.cfg.screensaver_enabled != new_cfg.screensaver_enabled ||
         app.cfg.screensaver_timeout_seconds !=
             new_cfg.screensaver_timeout_seconds ||
         app.cfg.monitor_overrides != new_cfg.monitor_overrides;
-    if (blink_changed) {
+    if (idle_changed) {
         std::vector<std::string> names;
         for (auto &mon : app.outputs)
             names.push_back(mon->output.name);
-        blink_reset(app.blink, names);
+        idle_reset(app.idle, names);
     }
 
     for (auto &mon : app.outputs) {
-        if (auto *wp = mon->module<ExpansePerMonitorModule>())
+        if (auto *wp = mon->module<WallpaperPerMonitorModule>())
             wp->resync(app, *mon, new_cfg);
 
         bool new_autohide =
             autohide_effective_enabled(new_cfg, mon->output.name);
         if (new_autohide != mon->autohide.enabled)
-            qixing_detail::monitor_autohide_apply(*mon, new_autohide);
+            bar_detail::monitor_autohide_apply(*mon, new_autohide);
 
-        if (auto *nv = mon->module<HeraldViewPerMonitorModule>())
+        if (auto *nv = mon->module<NotificationViewPerMonitorModule>())
             nv->resync(app, *mon);
     }
 
@@ -139,7 +139,7 @@ void apply_config_update(WaylandState &app, Config new_cfg) {
 
 void save_and_apply_config_update(WaylandState &app, Config new_cfg) {
     apply_config_update(app, new_cfg);
-    trulla_service_save(app.cfg);
+    settings_service_save(app.cfg);
     app.config_own_write_pending = true;
 }
 
@@ -159,27 +159,27 @@ MonitorOutput *active_target_monitor(WaylandState &app) {
     return target ? find_monitor_by_name_wl(app, target) : nullptr;
 }
 
-void trulla_retarget(WaylandState &app, TrullaState &trulla,
+void settings_retarget(WaylandState &app, SettingsState &settings,
                      MonitorOutput &target) {
-    TrullaState &s = trulla;
-    TrullaEnv env = trulla_env(app);
+    SettingsState &s = settings;
+    SettingsEnv env = settings_env(app);
     wl_output *bound = overlay_panel_retarget(
-        s.base, app.display, app.trulla_bound_output, target.output.wl,
+        s.base, app.display, app.settings_bound_output, target.output.wl,
         target.output.name.c_str(),
         [&](wl_output *out) {
-            return trulla_create_surface(s, app.compositor, app.layer_shell,
+            return settings_create_surface(s, app.compositor, app.layer_shell,
                                          out);
         },
         [&] {
-            return trulla_init_egl(s, app.cfg, app.renderer, app.egl_display,
+            return settings_init_egl(s, app.cfg, app.renderer, app.egl_display,
                                    app.egl_config, app.egl_context,
                                    env.monitor_names_fn, env.focused_monitor_fn,
                                    env.decode_status_fn);
         });
     if (bound)
-        app.trulla_bound_output = bound;
+        app.settings_bound_output = bound;
     else
-        app.trulla_enabled = false;
+        app.settings_enabled = false;
 
     if (!app.outputs.empty())
         eglMakeCurrent(app.egl_display, app.outputs.front()->egl_surface,

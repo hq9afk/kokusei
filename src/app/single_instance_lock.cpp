@@ -11,7 +11,7 @@
 
 namespace {
 
-std::string single_instance_penance_path() {
+std::string single_instance_lock_path() {
     const char *runtime_dir = getenv("XDG_RUNTIME_DIR");
     if (!runtime_dir)
         runtime_dir = "/tmp";
@@ -21,7 +21,7 @@ std::string single_instance_penance_path() {
 } // namespace
 
 bool single_instance_try_acquire() {
-    std::string path = single_instance_penance_path();
+    std::string path = single_instance_lock_path();
     int fd = open(path.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0600);
     if (fd < 0) {
         klog("single_instance: open %s: %s - running unguarded", path.c_str(),

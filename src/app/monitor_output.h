@@ -65,7 +65,7 @@ void request_all_frames(MonitorOutput &mon);
 MonitorOutput *find_monitor_by_name_wl(WaylandState &app, wl_output *wl);
 MonitorOutput *find_monitor_for_surface(WaylandState &app, wl_surface *surface);
 
-struct TrullaState;
+struct SettingsState;
 
 namespace app_detail {
 
@@ -78,7 +78,7 @@ void rest_egl_current(WaylandState &app);
 void apply_config_update(WaylandState &app, Config new_cfg);
 void save_and_apply_config_update(WaylandState &app, Config new_cfg);
 MonitorOutput *active_target_monitor(WaylandState &app);
-void trulla_retarget(WaylandState &app, TrullaState &trulla,
+void settings_retarget(WaylandState &app, SettingsState &settings,
                      MonitorOutput &target);
 
 } // namespace app_detail

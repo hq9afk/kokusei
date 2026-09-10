@@ -28,7 +28,7 @@ struct MediaDrmFrame {
 
 using MediaDecodeDrmFrameCallback = std::function<void(MediaDrmFrame frame)>;
 
-enum class MediaDecodeStatus { Blink, ZeroCopy, CpuFallback };
+enum class MediaDecodeStatus { Idle, ZeroCopy, CpuFallback };
 
 struct MediaDecodePlayback {
     std::thread worker;
@@ -88,7 +88,7 @@ std::vector<MediaFrame> media_decode_frames(const std::string &path,
                                             int max_frames);
 
 constexpr int kAnimateMaxSeconds = 30;
-inline constexpr int kAnimateExpanseFps = 15;
+inline constexpr int kAnimateWallpaperFps = 15;
 inline constexpr int kAnimateMaxDecodeDim = 1440;
 
 enum class AnimateFit { Crop, Fit };
