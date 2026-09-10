@@ -112,8 +112,7 @@ class BrightnessOsdService final : public Service {
             for (auto &mon : app.outputs) {
                 if (!osd_effective_enabled(app.cfg, mon->output.name))
                     continue;
-                OsdState &osd =
-                    mon->module<OsdPerMonitorModule>()->state();
+                OsdState &osd = mon->module<OsdPerMonitorModule>()->state();
                 osd_show(osd, OsdKind::Brightness, level, false);
                 osd_request_frame(osd);
             }
@@ -143,8 +142,7 @@ class PipewireOsdService final : public Service {
                 for (auto &mon : app.outputs) {
                     if (!osd_effective_enabled(app.cfg, mon->output.name))
                         continue;
-                    OsdState &osd =
-                        mon->module<OsdPerMonitorModule>()->state();
+                    OsdState &osd = mon->module<OsdPerMonitorModule>()->state();
                     osd_show(osd, OsdKind::Volume, level, muted);
                     osd_request_frame(osd);
                 }
@@ -155,8 +153,7 @@ class PipewireOsdService final : public Service {
                 for (auto &mon : app.outputs) {
                     if (!osd_effective_enabled(app.cfg, mon->output.name))
                         continue;
-                    OsdState &osd =
-                        mon->module<OsdPerMonitorModule>()->state();
+                    OsdState &osd = mon->module<OsdPerMonitorModule>()->state();
                     osd_show(osd, OsdKind::Mic, level, muted);
                     osd_request_frame(osd);
                 }
@@ -395,6 +392,19 @@ class CompositorWorkspaceService final : public Service {
             }
         });
         return sources;
+    }
+
+    void timer_tick(WaylandState &app) override {
+        if (app.compositor_backend != WaylandState::CompositorBackend::Hyprland)
+            return;
+        if (!hypr_refresh_clients(app.hypr))
+            return;
+        redraw_all_monitors(app);
+        for (auto &m : app.overlays)
+            if (m->is_open()) {
+                m->request_frame();
+                app_detail::rest_egl_current(app);
+            }
     }
 };
 

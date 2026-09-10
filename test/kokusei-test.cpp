@@ -34,6 +34,7 @@ int main() {
 
         {"keyboard", test_keyboard},
         {"active_output", test_active_output},
+        {"dock", test_dock},
 
         {"rfkill", test_rfkill},
         {"cpu_temp", test_cpu_temp},

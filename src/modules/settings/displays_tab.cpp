@@ -12,9 +12,9 @@ std::string displays_monitor_from_tag(const std::string &tag) {
 
 } // namespace
 
-void settings_draw_monitor_row(SettingsState &state, Node *parent, int32_t scale,
-                             float x, float y, float row_w,
-                             const std::string &selected_monitor) {
+void settings_draw_monitor_row(SettingsState &state, Node *parent,
+                               int32_t scale, float x, float y, float row_w,
+                               const std::string &selected_monitor) {
     std::vector<std::string> sorted_names = state.monitor_names;
     std::sort(sorted_names.begin(), sorted_names.end());
 
@@ -46,10 +46,10 @@ void settings_draw_monitor_row(SettingsState &state, Node *parent, int32_t scale
         draw_tile(name, name, name == selected_monitor);
 }
 
-void displays_tab_paint(SettingsState &state, Node *root, int32_t scale, float x,
-                        float y, float w, const Config &cfg) {
+void displays_tab_paint(SettingsState &state, Node *root, int32_t scale,
+                        float x, float y, float w, const Config &cfg) {
     settings_draw_monitor_row(state, root, scale, x, y, w,
-                            state.displays_selected_monitor);
+                              state.displays_selected_monitor);
     y += kSettingsScreenSelectorHeight + kPanelRowGap;
 
     bool is_default = state.displays_selected_monitor.empty();
@@ -70,8 +70,11 @@ void displays_tab_paint(SettingsState &state, Node *root, int32_t scale, float x
 
     if (is_default || override_enabled) {
         bool osd_val = is_default ? cfg.default_osd_enabled : ov->osd;
-        bool notif_val = is_default ? cfg.default_notifications_enabled : ov->notifications;
+        bool notif_val =
+            is_default ? cfg.default_notifications_enabled : ov->notifications;
         bool autohide_val = is_default ? cfg.autohide : ov->autohide;
+        bool dock_autohide_val =
+            is_default ? cfg.dock_autohide : ov->dock_autohide;
 
         draw_toggle_row(state, root, scale, x, y, w, "OSD", osd_val,
                         "osdenabled", true);
@@ -81,6 +84,9 @@ void displays_tab_paint(SettingsState &state, Node *root, int32_t scale, float x
         y += kSettingsToggleTileHeight + kSettingsGroupSpacingSm;
         draw_toggle_row(state, root, scale, x, y, w, "Bar Autohide",
                         autohide_val, "autohideenabled", true);
+        y += kSettingsToggleTileHeight + kSettingsGroupSpacingSm;
+        draw_toggle_row(state, root, scale, x, y, w, "Dock Autohide",
+                        dock_autohide_val, "dockautohideenabled", true);
         y += kSettingsToggleTileHeight;
     }
 }
@@ -105,21 +111,26 @@ bool displays_tab_handle_click(SettingsState &state, const Config &cfg,
             ov.osd = cfg.default_osd_enabled;
             ov.notifications = cfg.default_notifications_enabled;
             ov.autohide = cfg.autohide;
+            ov.dock_autohide = cfg.dock_autohide;
         }
         ov.enabled = !ov.enabled;
         on_commit(updated);
     } else if (region.tag == "osdenabled" ||
                region.tag == "notificationsenabled" ||
-               region.tag == "autohideenabled") {
+               region.tag == "autohideenabled" ||
+               region.tag == "dockautohideenabled") {
         Config updated = cfg;
         bool is_default = state.displays_selected_monitor.empty();
         if (is_default) {
             if (region.tag == "osdenabled")
                 updated.default_osd_enabled = !cfg.default_osd_enabled;
             else if (region.tag == "notificationsenabled")
-                updated.default_notifications_enabled = !cfg.default_notifications_enabled;
-            else
+                updated.default_notifications_enabled =
+                    !cfg.default_notifications_enabled;
+            else if (region.tag == "autohideenabled")
                 updated.autohide = !cfg.autohide;
+            else
+                updated.dock_autohide = !cfg.dock_autohide;
         } else {
             MonitorOverride &ov =
                 updated.monitor_overrides[state.displays_selected_monitor];
@@ -127,8 +138,10 @@ bool displays_tab_handle_click(SettingsState &state, const Config &cfg,
                 ov.osd = !ov.osd;
             else if (region.tag == "notificationsenabled")
                 ov.notifications = !ov.notifications;
-            else
+            else if (region.tag == "autohideenabled")
                 ov.autohide = !ov.autohide;
+            else
+                ov.dock_autohide = !ov.dock_autohide;
         }
         on_commit(updated);
     } else {

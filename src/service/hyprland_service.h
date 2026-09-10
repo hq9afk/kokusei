@@ -55,6 +55,8 @@ struct HyprlandState {
 
 void hypr_refresh(HyprlandState &state);
 
+bool hypr_refresh_clients(HyprlandState &state);
+
 bool hypr_init(HyprlandState &state);
 
 enum class HyprEventResult {

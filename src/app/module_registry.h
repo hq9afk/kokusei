@@ -8,12 +8,29 @@
 #include "app/module.h"
 #include "app/per_monitor_module.h"
 
+#include "modules/dock.h"
 #include "modules/idle.h"
 #include "modules/wallpaper.h"
 #include "modules/notification.h"
 #include "modules/osd.h"
 
 struct Config;
+
+class DockPerMonitorModule final : public PerMonitorModule {
+  public:
+    DockState &state() { return state_; }
+
+    bool create_surface(WaylandState &app, MonitorOutput &mon,
+                        wl_output *output) override;
+    bool configured() const override;
+    bool init_egl(WaylandState &app, MonitorOutput &mon) override;
+    void destroy(WaylandState &app, MonitorOutput &mon) override;
+    bool owns_surface(wl_surface *surface) const override;
+    void request_frame() override;
+
+  private:
+    DockState state_;
+};
 
 class OsdPerMonitorModule final : public PerMonitorModule {
   public:

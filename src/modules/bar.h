@@ -19,6 +19,7 @@
 #include "modules/bar/panel/system_monitor_panel.h"
 #include "modules/bar/panel/tray_panel.h"
 #include "modules/bar/panel/volume_panel.h"
+#include "modules/bar/widget/dock_widget.h"
 #include "modules/bar/widget/widget_capsule.h"
 #include "modules/bar/widget/workspace_widget.h"
 
@@ -30,6 +31,7 @@
 struct BarPerMonitorState {
     WidgetCapsuleState capsule;
     WorkspaceWidgetState workspace_widget;
+    DockWidgetState dock_widget;
     NetworkPanelState network_panel;
     BluetoothPanelState bluetooth_panel;
     VolumePanelState volume_panel;

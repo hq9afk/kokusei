@@ -16,6 +16,7 @@
 #include "modules/bar/widget/tray_widget.h"
 #include "modules/bar/widget/volume_widget.h"
 #include "modules/bar/widget/dashboard_widget.h"
+#include "modules/bar/widget/dock_widget.h"
 
 #include "render/gl.h"
 #include "render/icon.h"
@@ -23,6 +24,7 @@
 #include "render/layer_surface.h"
 #include "render/palette.h"
 
+#include "service/dock_service.h"
 #include "service/output_service.h"
 
 BarPerMonitorState &bar_state(MonitorOutput &mon) {
@@ -316,6 +318,11 @@ void bar_paint(MonitorOutput &mon) {
     x = draw_workspace_row(content, bs.workspace_widget, mon.animations, x,
                            height, ws_list, active_id, pill_bg,
                            bs.overview_texture);
+
+    std::vector<DockEntry> dock_entries =
+        dock_entries_for_monitor(app.hypr, mon.output.name);
+    x = draw_dock_capsule(content, bs.dock_widget, mon.animations, x, height,
+                          dock_entries, pill_bg);
 
     bs.clock_rect = draw_clock_pill(content, height, mon.width,
                                     bs.clock_texture, white, pill_bg);

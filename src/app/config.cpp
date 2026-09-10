@@ -11,8 +11,7 @@
 #include "core/log.h"
 #include "core/path_home.h"
 
-bool osd_effective_enabled(const Config &cfg,
-                             const std::string &monitor_name) {
+bool osd_effective_enabled(const Config &cfg, const std::string &monitor_name) {
     auto it = cfg.monitor_overrides.find(monitor_name);
     if (it != cfg.monitor_overrides.end() && it->second.enabled)
         return it->second.osd;
@@ -20,7 +19,7 @@ bool osd_effective_enabled(const Config &cfg,
 }
 
 bool notifications_effective_enabled(const Config &cfg,
-                               const std::string &monitor_name) {
+                                     const std::string &monitor_name) {
     auto it = cfg.monitor_overrides.find(monitor_name);
     if (it != cfg.monitor_overrides.end() && it->second.enabled)
         return it->second.notifications;
@@ -33,6 +32,14 @@ bool autohide_effective_enabled(const Config &cfg,
     if (it != cfg.monitor_overrides.end() && it->second.enabled)
         return it->second.autohide;
     return cfg.autohide;
+}
+
+bool dock_autohide_effective_enabled(const Config &cfg,
+                                     const std::string &monitor_name) {
+    auto it = cfg.monitor_overrides.find(monitor_name);
+    if (it != cfg.monitor_overrides.end() && it->second.enabled)
+        return it->second.dock_autohide;
+    return cfg.dock_autohide;
 }
 
 bool ambient_effective_enabled(const Config &cfg,
@@ -73,7 +80,7 @@ screensaver_effective_timeout_seconds(const Config &cfg,
 }
 
 bool lock_effective_enabled(const Config &cfg,
-                               const std::string &monitor_name) {
+                            const std::string &monitor_name) {
     auto it = cfg.monitor_overrides.find(monitor_name);
     if (it != cfg.monitor_overrides.end() && it->second.enabled)
         return it->second.lock;
@@ -146,6 +153,9 @@ Config load_config() {
         nlohmann::json bar = section(j, "bar", "qixing");
         cfg.autohide = bar.value("autohideEnabled", cfg.autohide);
 
+        nlohmann::json dock = j.value("dock", nlohmann::json::object());
+        cfg.dock_autohide = dock.value("autohideEnabled", cfg.dock_autohide);
+
         nlohmann::json wallpaper = section(j, "wallpaper", "expanse");
         cfg.wallpaper_dir = wallpaper.value("dir", cfg.wallpaper_dir);
         if (auto it = wallpaper.find("columns");
@@ -188,13 +198,14 @@ Config load_config() {
                         val.get<std::vector<std::string>>();
 
         cfg.wallpaper_dir = path_expand_home(cfg.wallpaper_dir);
-        cfg.wallpaper_animated_dir = path_expand_home(cfg.wallpaper_animated_dir);
+        cfg.wallpaper_animated_dir =
+            path_expand_home(cfg.wallpaper_animated_dir);
         expand_column_paths(cfg.wallpaper_columns);
         expand_column_paths(cfg.wallpaper_animated_columns);
 
         nlohmann::json displays = j.value("displays", nlohmann::json::object());
         cfg.default_osd_enabled = pick(displays, "defaultOsd", "defaultSpark",
-                                         cfg.default_osd_enabled);
+                                       cfg.default_osd_enabled);
         cfg.default_notifications_enabled =
             pick(displays, "defaultNotifications", "defaultHeralds",
                  cfg.default_notifications_enabled);
@@ -213,6 +224,7 @@ Config load_config() {
             mo.notifications =
                 pick(val, "notifications", "heralds", mo.notifications);
             mo.autohide = val.value("autohide", mo.autohide);
+            mo.dock_autohide = val.value("dockAutohide", mo.dock_autohide);
             mo.ambient_enabled =
                 val.value("ambientEnabled", mo.ambient_enabled);
             mo.ambient_timeout_seconds =
@@ -232,8 +244,7 @@ Config load_config() {
         nlohmann::json idle = section(j, "idle", "blink");
         cfg.idle_management_enabled =
             idle.value("enabled", cfg.idle_management_enabled);
-        cfg.ambient_enabled =
-            idle.value("ambientEnabled", cfg.ambient_enabled);
+        cfg.ambient_enabled = idle.value("ambientEnabled", cfg.ambient_enabled);
         cfg.ambient_timeout_seconds =
             idle.value("ambientTimeoutSeconds", cfg.ambient_timeout_seconds);
         cfg.screensaver_enabled =
@@ -253,7 +264,7 @@ Config load_config() {
             kVisualizerParticleSizeMin, kVisualizerParticleSizeMax);
         cfg.visualizer.fractal_complexity =
             std::clamp(visualizer.value("fractalComplexity",
-                                       cfg.visualizer.fractal_complexity),
+                                        cfg.visualizer.fractal_complexity),
                        kVisualizerComplexityMin, kVisualizerComplexityMax);
         cfg.visualizer.glow_directions = std::clamp(
             visualizer.value("glowDirections", cfg.visualizer.glow_directions),
@@ -325,6 +336,7 @@ void save_config(const Config &cfg) {
         mo["osd"] = ov.osd;
         mo["notifications"] = ov.notifications;
         mo["autohide"] = ov.autohide;
+        mo["dockAutohide"] = ov.dock_autohide;
         mo["ambientEnabled"] = ov.ambient_enabled;
         mo["ambientTimeoutSeconds"] = ov.ambient_timeout_seconds;
         mo["screensaverEnabled"] = ov.screensaver_enabled;
@@ -348,9 +360,8 @@ void save_config(const Config &cfg) {
     visualizer["glowDirections"] = cfg.visualizer.glow_directions;
     visualizer["glowQuality"] = cfg.visualizer.glow_quality;
     visualizer["visualizerShape"] =
-        cfg.visualizer.visualizer_shape == VisualizerShape::Sphere
-            ? "sphere"
-            : "bar";
+        cfg.visualizer.visualizer_shape == VisualizerShape::Sphere ? "sphere"
+                                                                   : "bar";
 
     nlohmann::json rain;
     rain["mode"] = cfg.rain.mode == RainMode::Stiletto ? "stiletto" : "matrix";
@@ -358,6 +369,7 @@ void save_config(const Config &cfg) {
 
     nlohmann::json j;
     j["bar"] = {{"autohideEnabled", cfg.autohide}};
+    j["dock"] = {{"autohideEnabled", cfg.dock_autohide}};
     j["wallpaper"] = wallpaper;
     j["displays"] = displays;
     j["logout"] = {{"animatedLogo", cfg.logout_animated_logo}};

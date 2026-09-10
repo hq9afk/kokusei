@@ -24,6 +24,7 @@ struct MonitorOverride {
     bool osd = true;
     bool notifications = true;
     bool autohide = false;
+    bool dock_autohide = false;
     bool ambient_enabled = true;
     uint32_t ambient_timeout_seconds = 150;
     bool screensaver_enabled = true;
@@ -48,6 +49,7 @@ struct Config {
     std::map<std::string, std::vector<std::string>> wallpaper_animated_fill_modes;
 
     bool autohide = false;
+    bool dock_autohide = false;
     bool default_osd_enabled = true;
     bool default_notifications_enabled = true;
     bool default_wallpaper_enabled = true;
@@ -74,6 +76,9 @@ bool notifications_effective_enabled(const Config &cfg,
 
 bool autohide_effective_enabled(const Config &cfg,
                                 const std::string &monitor_name);
+
+bool dock_autohide_effective_enabled(const Config &cfg,
+                                     const std::string &monitor_name);
 
 bool ambient_effective_enabled(const Config &cfg,
                                const std::string &monitor_name);

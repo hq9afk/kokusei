@@ -28,6 +28,7 @@
 ## src/config
 
 - `bar_config.h`: Bar geometry, spacing, and pill-order constants.
+- `dock_config.h`: Dock capsule geometry, icon size/spacing, focused/unfocused icon opacity, reorder timing, bottom margin, autohide peek/reveal/hide constants, animation-owner bases.
 - `launcher_config.h`: Every launcher data type and constant, no function bodies.
 - `osd_config.h`: OSD surface size/margin/duration/animation-owner constants.
 - `notification_config.h`: Notification card padding/size/timing constants.
@@ -72,6 +73,7 @@
 - `slider.h`+`.cpp`: `draw_slider_track`, shared track+fill+click-region drawing for any slider.
 - `arc_gauge.h`+`.cpp`: `cached_arc_gauge`/`draw_arc_gauge`, shared cached circular arc-gauge texture plus icon/value/optional-sub-label stack layout; diameter, stroke, gaps, and tint colors are all caller params. Consumed by `dashboard`'s system-stats card and `lock`'s resource gauges.
 - `progress_bar.h`+`.cpp`: `draw_flat_bar`, shared track+fill rounded-bar drawing with a caller-set minimum fill width; no click regions or panel dependency. Consumed by `battery_panel`, `system_monitor_panel`, and `osd`'s OSD.
+- `dock_row.h`+`.cpp`: `DockIconCache` per-window-class icon-texture cache and `draw_dock_row`, the icon row with baked-alpha focused/unfocused opacity and address-keyed reorder slide; shared by `dock` and the bar's `dock_widget`.
 
 ## src/service
 
@@ -87,14 +89,15 @@
 - `frame_service.h`+`.cpp`: Frame-callback paint pacing shared across surfaces; first paint synchronous, later repaints deferred to `frame_done`.
 - `input_service.h`+`.cpp`: all `wl_seat` input - `wl_keyboard`+xkbcommon (key-repeat, compose key, modifiers, `focused_surface` tracking `key_dispatch.cpp` routes on), `wl_pointer` (hover, click queue with button and click-time coords, cursor-shape), and the shared seat-capabilities listener.
 - `text_input_service.h`+`.cpp`: `zwp_text_input_v3` client-role protocol glue for IME composition (fcitx5/ibus), focus tracking, preedit/commit/delete dispatch to the active `TextInputClient`.
-- `hyprland_service.h`+`.cpp`: Hyprland IPC client: per-monitor workspace/monitor/client state via request+event sockets, plus `hypr_tile_*` tiling actions dispatched as `hl.dsp.*` Lua calls; header also owns the `Workspace`/`MonitorWorkspaces` types.
+- `hyprland_service.h`+`.cpp`: Hyprland IPC client: per-monitor workspace/monitor/client state via request+event sockets, plus `hypr_tile_*` tiling actions dispatched as `hl.dsp.*` Lua calls; header also owns the `Workspace`/`MonitorWorkspaces` types. `hypr_refresh_clients` re-reads only `j/clients` and returns whether the address/workspace/`x`/focus order changed, for the timer reconciliation of intra-workspace tile reorders.
 - `capture_service.h`+`.cpp`: Per-window `hyprland-toplevel-export-v1` live capture; `wl_shm` buffer alloc/reuse and GL texture upload, throttled per window.
 - `output_service.h`+`.cpp`: Pure-data `Output` struct plus output-selection logic, and per-output fractional-scale listener tracking (`OutputScale`).
 - `wallpaper_service.h`+`.cpp`: Per-monitor, per-column wallpaper path/count/fill-mode resolution; a `bool animated` selects the static or animated config maps.
 - `media_service.h`+`.cpp`: The shell's one media decoder, host side. Loads the `media_plugin` via `dlopen`; owns the `AnimateJob` async `.rgba` frame cache (`.tmp`-renamed, `fps * 30 s` ceiling), `animate_decode_scaled` still/first-frame decode+downscale+cache, and the `animate_scale_filter`/`animate_decode_size`/`kAnimate*`/`animate_frame_index` policy. Test-linked; no `libav`.
 - `media_plugin.h`+`.cpp`: The `shared_module` that links `libavcodec`/`libavfilter`, isolated so a missing/mismatched `ffmpeg` only disables animated content. Does the actual decoding: paced/looping/hw-accel/zero-copy playback for animated wallpaper (behind `media_decode_stream`), and a software-only bounded `RGBA` frame-set for UI gifs (behind `media_decode_frames`). Header declares the three `extern "C"` entry points the loader reaches via `dlsym`.
 - `settings_service.h`+`.cpp`: Settings field-text parsing into `Config` and the config-save wrapper.
-- `icon_service.h`+`.cpp`: App icon path resolution across GTK icon themes (Adwaita, breeze, hicolor), PNG then SVG, via a cached index.
+- `icon_service.h`+`.cpp`: App icon path resolution across GTK icon themes (Adwaita, breeze, hicolor), PNG then SVG, via a cached index; `resolve_window_icon_path` maps a compositor window class to an icon through a cached `.desktop` id/`StartupWMClass` -> `Icon` index before falling back to the raw class then `application-x-executable`.
+- `dock_service.h`+`.cpp`: `DockEntry` list for a monitor's active workspace from `HyprlandState`, sorted by window `x`, `focused` = `focus_history_id == 0`; pure, test-linked.
 
 ## src/core
 
@@ -108,6 +111,7 @@
 ## src/modules
 
 - `bar.h`+`.cpp`: Bar rendering, autohide geometry, pill-click dispatch, bar surface's own EGL; shared `WaylandState`-wide helpers.
+- `dock.h`+`.cpp`: Per-monitor bottom layer-shell dock; centered `overlay`/`accent` capsule of the active workspace's window icons, own surface/EGL/scene. Without autohide: `exclusive_zone` toggled by window count, empty input region. With autohide (`dock_apply_autohide`): zone always `0`, whole-surface input region, `1px` peek strip that reveals the capsule on pointer-enter and collapses on leave, opacity via `Renderer::set_opacity`.
 - `launcher.h`+`.cpp`: `LauncherState`, surface/EGL/tick/toggle/key/click/pointer-hover/paint core only.
 - `osd.h`+`.cpp`: Volume/brightness popup, per-monitor, auto-hides, reactive to system state changes.
 - `notification.h`+`.cpp`: Notification renderer; `notification_sync` rebuilds `NotificationEntry` render/animation state by `id` from `notification_service` records, per-monitor `NotificationView` card paint, and per-card `x` close button that dismisses only on the clicked monitor via a per-view fade.
@@ -174,6 +178,7 @@
 - `panel/clock_panel.h`+`.cpp`: On-demand centered month-grid calendar panel; header prev/today/next month nav, weekday row, `6x7` day grid with today highlighted.
 - `widget/widget_capsule.h`+`.cpp`: Shared pill bookkeeping, hover-expand/click dispatch, and the pill-row layout/draw.
 - `widget/workspace_widget.h`+`.cpp`: Workspace-row drawing plus trailing overview-toggle icon; records per-pill and icon hit rects for click routing.
+- `widget/dock_widget.h`+`.cpp`: Bar-capsule variant of the dock icon row for the active workspace, drawn after the workspace row via shared `render/dock_row`; non-interactive.
 - `widget/clock_widget.h`+`.cpp`: State-free clock-pill drawing; returns the pill hit rect and owns the calendar-panel open trigger.
 - `widget/logout_widget.h`+`.cpp`: One pair per bar pill.
 - `widget/battery_widget.h`+`.cpp`: One pair per bar pill.
@@ -205,6 +210,7 @@
 - launcher/test_launcher.cpp
 - wayland/test_keyboard.cpp
 - wayland/test_active_output.cpp
+- wayland/test_dock.cpp
 - system/test_rfkill.cpp
 - render/test_animation.cpp
 - render/test_animated_image.cpp

@@ -25,13 +25,17 @@ void test_config() {
     assert(path == config_dir + "/config.json");
 
     Config cfg;
+    cfg.dock_autohide = true;
     save_config(cfg);
 
     std::ifstream f(path);
     std::string content((std::istreambuf_iterator<char>(f)),
                         std::istreambuf_iterator<char>());
-    assert(content.find("\"dock\"") == std::string::npos);
+    assert(content.find("\"dock\"") != std::string::npos);
     assert(content.find("\"autohideEnabled\"") != std::string::npos);
+
+    Config reloaded = load_config();
+    assert(reloaded.dock_autohide == true);
 
     unlink(path.c_str());
     rmdir(config_dir.c_str());
@@ -76,15 +80,20 @@ void test_monitor_overrides() {
     assert(notifications_effective_enabled(cfg, "DP-1") ==
            cfg.default_notifications_enabled);
     assert(autohide_effective_enabled(cfg, "DP-1") == cfg.autohide);
+    assert(dock_autohide_effective_enabled(cfg, "DP-1") == cfg.dock_autohide);
 
-    cfg.monitor_overrides["DP-1"] = MonitorOverride{
-        .enabled = false, .osd = false, .notifications = false, .autohide = true};
+    cfg.monitor_overrides["DP-1"] = MonitorOverride{.enabled = false,
+                                                    .osd = false,
+                                                    .notifications = false,
+                                                    .autohide = true,
+                                                    .dock_autohide = true};
     assert(osd_effective_enabled(cfg, "DP-1") == cfg.default_osd_enabled);
 
     cfg.monitor_overrides["DP-1"].enabled = true;
     assert(osd_effective_enabled(cfg, "DP-1") == false);
     assert(notifications_effective_enabled(cfg, "DP-1") == false);
     assert(autohide_effective_enabled(cfg, "DP-1") == true);
+    assert(dock_autohide_effective_enabled(cfg, "DP-1") == true);
 
     assert(osd_effective_enabled(cfg, "HDMI-1") == cfg.default_osd_enabled);
 

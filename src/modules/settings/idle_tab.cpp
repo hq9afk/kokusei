@@ -13,11 +13,11 @@ std::string idle_monitor_from_tag(const std::string &tag) {
 }
 
 void draw_idle_tier_tile(SettingsState &state, Node *parent, int32_t scale,
-                          float x, float y, float w, const std::string &label,
-                          SettingsFieldId field_id, uint32_t value,
-                          uint32_t default_value, bool enabled_value,
-                          bool show_reset, const char *reset_tag,
-                          const char *toggle_tag) {
+                         float x, float y, float w, const std::string &label,
+                         SettingsFieldId field_id, uint32_t value,
+                         uint32_t default_value, bool enabled_value,
+                         bool show_reset, const char *reset_tag,
+                         const char *toggle_tag) {
     float h = kSettingsToggleTileHeight;
     node_add_rrect(parent, x, y, w, h, kSettingsTileRadius,
                    kSettingsToggleTileBorderWidth, rgba(palette::text_alpha04),
@@ -31,8 +31,8 @@ void draw_idle_tier_tile(SettingsState &state, Node *parent, int32_t scale,
 
     float switch_x = x + w - inset - kSettingsToggleTrackWidth;
     float divider_x = switch_x - kSettingsToggleTileContentSpacing;
-    float reset_x =
-        divider_x - kSettingsToggleTileContentSpacing - kSettingsIdleResetIconSize;
+    float reset_x = divider_x - kSettingsToggleTileContentSpacing -
+                    kSettingsIdleResetIconSize;
     float field_w = kSettingsNumberFieldWidth;
     float field_x = reset_x - kSettingsToggleTileContentSpacing - field_w;
     float field_y = y + (h - kSettingsFieldHeight) / 2.0f;
@@ -76,7 +76,8 @@ void draw_idle_tier_tile(SettingsState &state, Node *parent, int32_t scale,
         if (reset_icon)
             node_add_texture(
                 parent,
-                reset_x + (kSettingsIdleResetIconSize - reset_icon->width) / 2.0f,
+                reset_x +
+                    (kSettingsIdleResetIconSize - reset_icon->width) / 2.0f,
                 reset_y +
                     (kSettingsIdleResetIconSize - reset_icon->height) / 2.0f,
                 *reset_icon, rgba(palette::text_dim));
@@ -98,17 +99,16 @@ void draw_idle_tier_tile(SettingsState &state, Node *parent, int32_t scale,
 } // namespace
 
 void idle_tab_paint(SettingsState &state, Node *root, int32_t scale, float x,
-                     float y, float w, const Config &cfg) {
+                    float y, float w, const Config &cfg) {
     draw_toggle_row(state, root, scale, x, y, w, "Enable Idle Management",
-                    cfg.idle_management_enabled, "idlemanagementenabled",
-                    true);
+                    cfg.idle_management_enabled, "idlemanagementenabled", true);
     y += kSettingsToggleTileHeight + kPanelRowGap;
 
     if (!cfg.idle_management_enabled)
         return;
 
     settings_draw_monitor_row(state, root, scale, x, y, w,
-                            state.idle_selected_monitor);
+                              state.idle_selected_monitor);
     y += kSettingsScreenSelectorHeight + kPanelRowGap;
 
     bool is_default = state.idle_selected_monitor.empty();
@@ -139,10 +139,10 @@ void idle_tab_paint(SettingsState &state, Node *root, int32_t scale, float x,
                        : ov->screensaver_timeout_seconds;
 
         draw_idle_tier_tile(state, root, scale, x, y, w, "Ambient Mode",
-                             SettingsFieldId::AmbientTimeout, ambient_timeout_val,
-                             cfg.ambient_timeout_seconds, ambient_enabled_val,
-                             !is_default, "idleambientreset",
-                             "idleambientenabled");
+                            SettingsFieldId::AmbientTimeout,
+                            ambient_timeout_val, cfg.ambient_timeout_seconds,
+                            ambient_enabled_val, !is_default,
+                            "idleambientreset", "idleambientenabled");
         y += kSettingsToggleTileHeight + kSettingsGroupSpacingSm;
 
         draw_idle_tier_tile(
@@ -155,8 +155,8 @@ void idle_tab_paint(SettingsState &state, Node *root, int32_t scale, float x,
 }
 
 bool idle_tab_handle_click(SettingsState &state, const Config &cfg,
-                            const SettingsCommitFn &on_commit,
-                            const PanelClickRegion &region) {
+                           const SettingsCommitFn &on_commit,
+                           const PanelClickRegion &region) {
     if (region.kind == PanelClickKind::MonitorSelect) {
         state.idle_selected_monitor = idle_monitor_from_tag(region.tag);
         settings_request_frame(state);
@@ -180,6 +180,7 @@ bool idle_tab_handle_click(SettingsState &state, const Config &cfg,
             ov.osd = cfg.default_osd_enabled;
             ov.notifications = cfg.default_notifications_enabled;
             ov.autohide = cfg.autohide;
+            ov.dock_autohide = cfg.dock_autohide;
             ov.ambient_enabled = cfg.ambient_enabled;
             ov.ambient_timeout_seconds = cfg.ambient_timeout_seconds;
             ov.screensaver_enabled = cfg.screensaver_enabled;

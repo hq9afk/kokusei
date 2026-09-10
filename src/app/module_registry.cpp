@@ -8,18 +8,18 @@
 
 #include "config/bar_config.h"
 
-#include "modules/wallpaper.h"
-#include "modules/notification.h"
-#include "modules/overview.h"
+#include "modules/bar.h"
+#include "modules/dashboard.h"
 #include "modules/launcher.h"
 #include "modules/lock.h"
-#include "modules/bar.h"
-#include "modules/rain.h"
-#include "modules/visualizer.h"
-#include "modules/osd.h"
 #include "modules/logout.h"
+#include "modules/notification.h"
+#include "modules/osd.h"
+#include "modules/overview.h"
+#include "modules/rain.h"
 #include "modules/settings.h"
-#include "modules/dashboard.h"
+#include "modules/visualizer.h"
+#include "modules/wallpaper.h"
 
 #include "render/animated_image.h"
 #include "render/image.h"
@@ -160,13 +160,13 @@ class LogoutModule final : public Module {
     bool create_surface(WaylandState &app, wl_output *output) override {
         output_ = output;
         want_ = logout_create_surface(state_, app.compositor, app.layer_shell,
-                                        output);
+                                      output);
         return want_;
     }
 
     bool init_egl(WaylandState &app) override {
         if (!logout_init_egl(state_, app.renderer, app.egl_display,
-                               app.egl_config, app.egl_context))
+                             app.egl_config, app.egl_context))
             return false;
         state_.bound_output = output_;
         request_frame();
@@ -216,10 +216,9 @@ class LogoutModule final : public Module {
             if (target && (target->output.wl != state_.bound_output ||
                            !state_.base.layer_surface))
                 logout_retarget(state_, app.compositor, app.layer_shell,
-                                  app.display, app.renderer, app.egl_display,
-                                  app.egl_config, app.egl_context,
-                                  target->output.wl,
-                                  target->output.name.c_str());
+                                app.display, app.renderer, app.egl_display,
+                                app.egl_config, app.egl_context,
+                                target->output.wl, target->output.name.c_str());
         }
         logout_apply_logo_config(state_, app.cfg.logout_animated_logo);
         logout_toggle(state_, true);
@@ -238,14 +237,14 @@ class DashboardModule final : public Module {
 
     bool create_surface(WaylandState &app, wl_output *output) override {
         output_ = output;
-        want_ = dashboard_create_surface(state_, app.compositor, app.layer_shell,
-                                      output);
+        want_ = dashboard_create_surface(state_, app.compositor,
+                                         app.layer_shell, output);
         return want_;
     }
 
     bool init_egl(WaylandState &app) override {
         if (!dashboard_init_egl(state_, app.renderer, app, app.egl_display,
-                             app.egl_config, app.egl_context))
+                                app.egl_config, app.egl_context))
             return false;
         state_.bound_output = output_;
         request_frame();
@@ -257,9 +256,9 @@ class DashboardModule final : public Module {
     }
     wl_surface *surface() const override { return state_.base.surface; }
     void request_frame() override {
-        dashboard_request_frame(
-            state_, static_cast<float>(bar_detail::kBarHeight),
-            static_cast<float>(bar_detail::kBarTopMargin));
+        dashboard_request_frame(state_,
+                                static_cast<float>(bar_detail::kBarHeight),
+                                static_cast<float>(bar_detail::kBarTopMargin));
     }
 
     bool timer_tick(WaylandState &app) override {
@@ -320,9 +319,10 @@ class DashboardModule final : public Module {
             if (target && (target->output.wl != state_.bound_output ||
                            !state_.base.layer_surface))
                 dashboard_retarget(state_, app.compositor, app.layer_shell,
-                                app.display, app.renderer, app, app.egl_display,
-                                app.egl_config, app.egl_context,
-                                target->output.wl, target->output.name.c_str());
+                                   app.display, app.renderer, app,
+                                   app.egl_display, app.egl_config,
+                                   app.egl_context, target->output.wl,
+                                   target->output.name.c_str());
             cpu_temp_poll(app.cpu_temp);
             system_stats_poll(app.system_stats);
             gpu_temp_poll(app.gpu_temp);
@@ -346,13 +346,13 @@ class OverviewModule final : public Module {
     bool create_surface(WaylandState &app, wl_output *output) override {
         output_ = output;
         want_ = overview_create_surface(state_, app.compositor, app.layer_shell,
-                                     output);
+                                        output);
         return want_;
     }
 
     bool init_egl(WaylandState &app) override {
         if (!overview_init_egl(state_, app.renderer, app.egl_display,
-                            app.egl_config, app.egl_context))
+                               app.egl_config, app.egl_context))
             return false;
         state_.bound_output = output_;
         state_.app_ptr = &app;
@@ -414,9 +414,10 @@ class OverviewModule final : public Module {
             if (target && (target->output.wl != state_.bound_output ||
                            !state_.base.layer_surface))
                 overview_retarget(state_, app.compositor, app.layer_shell,
-                               app.display, app.renderer, app.egl_display,
-                               app.egl_config, app.egl_context,
-                               target->output.wl, target->output.name.c_str());
+                                  app.display, app.renderer, app.egl_display,
+                                  app.egl_config, app.egl_context,
+                                  target->output.wl,
+                                  target->output.name.c_str());
         }
         overview_toggle(state_, app, true);
     }
@@ -437,16 +438,16 @@ class SettingsModule final : public Module, public TextInputClient {
     bool create_surface(WaylandState &app, wl_output *output) override {
         output_ = output;
         want_ = settings_create_surface(state_, app.compositor, app.layer_shell,
-                                      output);
+                                        output);
         return want_;
     }
 
     bool init_egl(WaylandState &app) override {
         SettingsEnv env = settings_env(app);
         if (!settings_init_egl(state_, app.cfg, app.renderer, app.egl_display,
-                             app.egl_config, app.egl_context,
-                             env.monitor_names_fn, env.focused_monitor_fn,
-                             env.decode_status_fn))
+                               app.egl_config, app.egl_context,
+                               env.monitor_names_fn, env.focused_monitor_fn,
+                               env.decode_status_fn))
             return false;
         app.settings_bound_output = output_;
         app.settings_enabled = true;
@@ -599,8 +600,8 @@ class LockModule final : public Module {
 
     bool init_egl(WaylandState &app) override {
         state_.app = &app;
-        state_.draw_wallpaper = [&app](const std::string &output_name, Node &root,
-                                     int32_t w, int32_t h) {
+        state_.draw_wallpaper = [&app](const std::string &output_name,
+                                       Node &root, int32_t w, int32_t h) {
             for (auto &mon : app.outputs) {
                 if (mon->output.name != output_name)
                     continue;
@@ -668,9 +669,9 @@ class LockModule final : public Module {
 };
 
 void wallpaper_sync_active_mode(WallpaperState &wp, const Config &cfg,
-                              const std::string &monitor_name) {
+                                const std::string &monitor_name) {
     wallpaper_sync_from_config(wp, cfg, monitor_name,
-                             cfg.wallpaper_animated_enabled);
+                               cfg.wallpaper_animated_enabled);
 }
 
 } // namespace
@@ -701,9 +702,48 @@ SettingsEnv settings_env(WaylandState &app) {
     };
 }
 
-bool OsdPerMonitorModule::create_surface(WaylandState &app,
-                                           MonitorOutput &mon,
-                                           wl_output *output) {
+bool DockPerMonitorModule::create_surface(WaylandState &app, MonitorOutput &mon,
+                                          wl_output *output) {
+    if (!dock_create_surface(state_, app.compositor, app.layer_shell, output))
+        klog("dock: failed to create layer surface on '%s'",
+             mon.output.name.c_str());
+    return true;
+}
+
+bool DockPerMonitorModule::configured() const {
+    return !state_.layer_surface || state_.configured;
+}
+
+bool DockPerMonitorModule::init_egl(WaylandState &app, MonitorOutput &mon) {
+    if (!state_.layer_surface)
+        return true;
+    state_.output_name = mon.output.name;
+    state_.hypr = &app.hypr;
+    state_.pointer = &app.pointer;
+    if (dock_init_egl(state_, app.renderer, app.egl_display, app.egl_config,
+                      app.egl_context)) {
+        dock_apply_autohide(
+            state_, dock_autohide_effective_enabled(app.cfg, mon.output.name));
+        dock_refresh(state_);
+        eglMakeCurrent(app.egl_display, mon.egl_surface, mon.egl_surface,
+                       app.egl_context);
+    }
+    return true;
+}
+
+void DockPerMonitorModule::destroy(WaylandState &app, MonitorOutput &) {
+    destroy_layer_surface(app.egl_display, state_.surface, state_.layer_surface,
+                          state_.egl_window, state_.egl_surface);
+}
+
+bool DockPerMonitorModule::owns_surface(wl_surface *surface) const {
+    return surface == state_.surface;
+}
+
+void DockPerMonitorModule::request_frame() { dock_refresh(state_); }
+
+bool OsdPerMonitorModule::create_surface(WaylandState &app, MonitorOutput &mon,
+                                         wl_output *output) {
     if (!osd_create_surface(state_, app.compositor, app.layer_shell, output))
         klog("osd: failed to create layer surface on '%s'",
              mon.output.name.c_str());
@@ -717,7 +757,7 @@ bool OsdPerMonitorModule::configured() const {
 bool OsdPerMonitorModule::init_egl(WaylandState &app, MonitorOutput &mon) {
     if (state_.layer_surface &&
         osd_init_egl(state_, app.renderer, app.egl_display, app.egl_config,
-                       app.egl_context))
+                     app.egl_context))
         eglMakeCurrent(app.egl_display, mon.egl_surface, mon.egl_surface,
                        app.egl_context);
     return true;
@@ -738,10 +778,10 @@ void OsdPerMonitorModule::tick(WaylandState &, MonitorOutput &) {
 }
 
 bool WallpaperPerMonitorModule::create_surface(WaylandState &app,
-                                             MonitorOutput &mon,
-                                             wl_output *output) {
+                                               MonitorOutput &mon,
+                                               wl_output *output) {
     if (!wallpaper_create_surface(state_, app.compositor, app.layer_shell,
-                                output))
+                                  output))
         klog("wallpaper: failed to create layer surface on '%s'",
              mon.output.name.c_str());
     return true;
@@ -751,13 +791,14 @@ bool WallpaperPerMonitorModule::configured() const {
     return !state_.layer_surface || state_.configured;
 }
 
-bool WallpaperPerMonitorModule::init_egl(WaylandState &app, MonitorOutput &mon) {
+bool WallpaperPerMonitorModule::init_egl(WaylandState &app,
+                                         MonitorOutput &mon) {
     if (!state_.layer_surface)
         return true;
     state_.app = &app;
     state_.output_name = mon.output.name;
-    if (!wallpaper_init_egl(state_, app.renderer, app.egl_display, app.egl_config,
-                          app.egl_context))
+    if (!wallpaper_init_egl(state_, app.renderer, app.egl_display,
+                            app.egl_config, app.egl_context))
         return true;
     wallpaper_sync_active_mode(state_, app.cfg, mon.output.name);
     state_.on_resize = [&app, &mon, this] {
@@ -798,17 +839,17 @@ WallpaperPerMonitorModule::decode_status(int column_index) const {
 }
 
 void WallpaperPerMonitorModule::resync(WaylandState &, MonitorOutput &mon,
-                                     const Config &new_cfg) {
+                                       const Config &new_cfg) {
     wallpaper_sync_active_mode(state_, new_cfg, mon.output.name);
     wallpaper_request_frame(state_);
 }
 
 bool NotificationViewPerMonitorModule::create_surface(WaylandState &app,
-                                                MonitorOutput &mon,
-                                                wl_output *output) {
+                                                      MonitorOutput &mon,
+                                                      wl_output *output) {
     if (notifications_effective_enabled(app.cfg, mon.output.name) &&
-        !notification_view_create_surface(state_, app.compositor, app.layer_shell,
-                                    output))
+        !notification_view_create_surface(state_, app.compositor,
+                                          app.layer_shell, output))
         klog("notification: failed to create layer surface on '%s'",
              mon.output.name.c_str());
     return true;
@@ -819,16 +860,18 @@ bool NotificationViewPerMonitorModule::configured() const {
 }
 
 bool NotificationViewPerMonitorModule::init_egl(WaylandState &app,
-                                          MonitorOutput &mon) {
+                                                MonitorOutput &mon) {
     if (state_.layer_surface &&
-        notification_view_init_egl(state_, app.notification, app.renderer, app.egl_display,
-                             app.egl_config, app.egl_context))
+        notification_view_init_egl(state_, app.notification, app.renderer,
+                                   app.egl_display, app.egl_config,
+                                   app.egl_context))
         eglMakeCurrent(app.egl_display, mon.egl_surface, mon.egl_surface,
                        app.egl_context);
     return true;
 }
 
-void NotificationViewPerMonitorModule::destroy(WaylandState &app, MonitorOutput &) {
+void NotificationViewPerMonitorModule::destroy(WaylandState &app,
+                                               MonitorOutput &) {
     destroy_layer_surface(app.egl_display, state_.surface, state_.layer_surface,
                           state_.egl_window, state_.egl_surface);
 }
@@ -841,9 +884,11 @@ void NotificationViewPerMonitorModule::request_frame() {
     notification_view_request_frame(state_);
 }
 
-void NotificationViewPerMonitorModule::handle_click(WaylandState &, MonitorOutput &,
-                                              wl_surface *, int button,
-                                              double x, double y, uint32_t) {
+void NotificationViewPerMonitorModule::handle_click(WaylandState &,
+                                                    MonitorOutput &,
+                                                    wl_surface *, int button,
+                                                    double x, double y,
+                                                    uint32_t) {
     if (button != BTN_LEFT)
         return;
     if (notification_view_handle_close_click(state_, x, y))
@@ -851,8 +896,8 @@ void NotificationViewPerMonitorModule::handle_click(WaylandState &, MonitorOutpu
 }
 
 void NotificationViewPerMonitorModule::handle_pointer_move(WaylandState &app,
-                                                     MonitorOutput &, double x,
-                                                     double y) {
+                                                           MonitorOutput &,
+                                                           double x, double y) {
     bool changed = app.pointer.focused_surface == state_.surface
                        ? notification_view_set_close_hover(state_, x, y)
                        : notification_view_clear_close_hover(state_);
@@ -864,17 +909,18 @@ bool NotificationViewPerMonitorModule::wants_pointing_hand_cursor() const {
     return state_.hovered_close_id != 0;
 }
 
-void NotificationViewPerMonitorModule::resync(WaylandState &app, MonitorOutput &mon) {
+void NotificationViewPerMonitorModule::resync(WaylandState &app,
+                                              MonitorOutput &mon) {
     bool want = notifications_effective_enabled(app.cfg, mon.output.name);
     bool have = state_.layer_surface != nullptr;
     if (want && !have) {
-        if (notification_view_create_surface(state_, app.compositor, app.layer_shell,
-                                       mon.output.wl)) {
+        if (notification_view_create_surface(state_, app.compositor,
+                                             app.layer_shell, mon.output.wl)) {
             while (!state_.configured)
                 wl_display_dispatch(app.display);
-            if (notification_view_init_egl(state_, app.notification, app.renderer,
-                                     app.egl_display, app.egl_config,
-                                     app.egl_context))
+            if (notification_view_init_egl(state_, app.notification,
+                                           app.renderer, app.egl_display,
+                                           app.egl_config, app.egl_context))
                 eglMakeCurrent(app.egl_display, mon.egl_surface,
                                mon.egl_surface, app.egl_context);
         }
@@ -886,13 +932,12 @@ void NotificationViewPerMonitorModule::resync(WaylandState &app, MonitorOutput &
     }
 }
 
-bool IdlePerMonitorModule::create_surface(WaylandState &app,
-                                           MonitorOutput &mon,
-                                           wl_output *output) {
+bool IdlePerMonitorModule::create_surface(WaylandState &app, MonitorOutput &mon,
+                                          wl_output *output) {
     if (mon.output.name == "HEADLESS")
         return true;
     if (!idle_overlay_create_surface(state_, app.compositor, app.layer_shell,
-                                      output))
+                                     output))
         klog("idle-overlay: failed to create layer surface on '%s'",
              mon.output.name.c_str());
     return true;
@@ -906,14 +951,15 @@ bool IdlePerMonitorModule::init_egl(WaylandState &app, MonitorOutput &mon) {
     if (!state_.layer_surface)
         return true;
     if (!idle_overlay_init_egl(state_, app.renderer, app.egl_display,
-                                app.egl_config, app.egl_context))
+                               app.egl_config, app.egl_context))
         return true;
     state_.draw_ambient = [&mon](Node &root, float w, float h) {
         auto *wp = mon.module<WallpaperPerMonitorModule>();
         if (!wp)
             return;
         wallpaper_draw_columns(wp->wallpaper_state(), &root,
-                             static_cast<int32_t>(w), static_cast<int32_t>(h));
+                               static_cast<int32_t>(w),
+                               static_cast<int32_t>(h));
     };
     eglMakeCurrent(app.egl_display, mon.egl_surface, mon.egl_surface,
                    app.egl_context);
@@ -939,7 +985,7 @@ void IdlePerMonitorModule::timer_tick(WaylandState &app, MonitorOutput &mon) {
     bool ambient_now =
         ambient_effective_enabled(app.cfg, mon.output.name) &&
         is_idle(app.idle, mon.output.name,
-                 ambient_effective_timeout_seconds(app.cfg, mon.output.name));
+                ambient_effective_timeout_seconds(app.cfg, mon.output.name));
     bool screensaver_now =
         screensaver_effective_enabled(app.cfg, mon.output.name) &&
         is_idle(
@@ -984,7 +1030,7 @@ LockModule *find_lock_module(WaylandState &app) {
 } // namespace
 
 void lock_notify_output_added(WaylandState &app, wl_output *output,
-                                 const char *name) {
+                              const char *name) {
     if (auto *lm = find_lock_module(app))
         lock_hotplug_add(lm->state(), output, name);
 }
@@ -1007,6 +1053,7 @@ void lock_start(WaylandState &app) {
 std::vector<std::unique_ptr<PerMonitorModule>> build_per_monitor_modules() {
     std::vector<std::unique_ptr<PerMonitorModule>> modules;
     modules.push_back(std::make_unique<BarPerMonitorModule>());
+    modules.push_back(std::make_unique<DockPerMonitorModule>());
     modules.push_back(std::make_unique<WallpaperPerMonitorModule>());
     modules.push_back(std::make_unique<OsdPerMonitorModule>());
     modules.push_back(std::make_unique<NotificationViewPerMonitorModule>());

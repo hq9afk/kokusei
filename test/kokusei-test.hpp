@@ -21,6 +21,7 @@ void test_launch_action();
 void test_icon_theme();
 void test_keyboard();
 void test_active_output();
+void test_dock();
 void test_rfkill();
 void test_cpu_temp();
 void test_gpu_temp();

@@ -141,6 +141,7 @@ kokusei_render_main_only_sources = [
   'src/render/slider.cpp',
   'src/render/arc_gauge.cpp',
   'src/render/progress_bar.cpp',
+  'src/render/dock_row.cpp',
   'src/render/video_texture.cpp',
 ]
 
@@ -158,6 +159,7 @@ kokusei_service_test_sources = [
   'src/service/media_service.cpp',
   'src/service/settings_service.cpp',
   'src/service/icon_service.cpp',
+  'src/service/dock_service.cpp',
 ]
 
 kokusei_service_main_only_sources = [
@@ -205,6 +207,7 @@ kokusei_bar_main_only_sources = [
   'src/modules/bar/widget/bluetooth_widget.cpp',
   'src/modules/bar/widget/network_widget.cpp',
   'src/modules/bar/widget/dashboard_widget.cpp',
+  'src/modules/bar/widget/dock_widget.cpp',
   'src/modules/bar/widget/system_monitor_widget.cpp',
   'src/modules/bar/widget/tray_widget.cpp',
   'src/modules/bar/widget/volume_widget.cpp',
@@ -224,6 +227,7 @@ kokusei_lock_main_only_sources = [
 ]
 
 kokusei_overlay_main_only_sources = [
+  'src/modules/dock.cpp',
   'src/modules/osd.cpp',
   'src/modules/wallpaper.cpp',
   'src/modules/notification.cpp',
@@ -384,6 +388,7 @@ kokusei_test = executable(
   'test/launcher/test_launcher.cpp',
   'test/wayland/test_keyboard.cpp',
   'test/wayland/test_active_output.cpp',
+  'test/wayland/test_dock.cpp',
   'test/system/test_rfkill.cpp',
   'test/system/test_cpu_temp.cpp',
   'test/system/test_gpu_temp.cpp',

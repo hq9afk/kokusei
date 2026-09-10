@@ -72,6 +72,57 @@ std::string request(const std::string &socket_path, const std::string &cmd) {
     return result;
 }
 
+std::vector<HyprClient> parse_clients(const std::string &reply) {
+    using nlohmann::json;
+    std::vector<HyprClient> clients;
+    try {
+        json arr = json::parse(reply);
+        for (auto &c : arr) {
+            HyprClient hc;
+            hc.address = c.value("address", std::string());
+            hc.window_class = c.value("class", std::string());
+            hc.title = c.value("title", std::string());
+            hc.workspace_id =
+                c.value("workspace", json::object()).value("id", -1);
+            hc.monitor_id = c.value("monitor", -1);
+            json at = c.value("at", json::array({0.0, 0.0}));
+            if (at.size() >= 2) {
+                hc.at[0] = at[0].get<double>();
+                hc.at[1] = at[1].get<double>();
+            }
+            json size = c.value("size", json::array({100.0, 100.0}));
+            if (size.size() >= 2) {
+                hc.size[0] = size[0].get<double>();
+                hc.size[1] = size[1].get<double>();
+            }
+            hc.floating = c.value("floating", false);
+            hc.fullscreen = c.value("fullscreen", 0);
+            hc.pinned = c.value("pinned", false);
+            hc.focus_history_id =
+                static_cast<long>(c.value("focusHistoryID", 0));
+            hc.xwayland = c.value("xwayland", false);
+            clients.push_back(std::move(hc));
+        }
+    } catch (const json::exception &e) {
+        klog("hyprland: failed to parse j/clients: %s", e.what());
+    }
+    return clients;
+}
+
+bool client_order_differs(const std::vector<HyprClient> &a,
+                          const std::vector<HyprClient> &b) {
+    if (a.size() != b.size())
+        return true;
+    for (size_t i = 0; i < a.size(); ++i) {
+        if (a[i].address != b[i].address ||
+            a[i].workspace_id != b[i].workspace_id ||
+            a[i].at[0] != b[i].at[0] ||
+            a[i].focus_history_id != b[i].focus_history_id)
+            return true;
+    }
+    return false;
+}
+
 std::vector<std::string> split(const std::string &s, char delim) {
     std::vector<std::string> parts;
     size_t start = 0;
@@ -152,39 +203,19 @@ void hypr_refresh(HyprlandState &state) {
         klog("hyprland: failed to parse j/monitors: %s", e.what());
     }
 
-    std::string clients_reply = request(state.request_socket_path, "j/clients");
-    try {
-        json arr = json::parse(clients_reply);
-        state.clients.clear();
-        for (auto &c : arr) {
-            HyprClient hc;
-            hc.address = c.value("address", std::string());
-            hc.window_class = c.value("class", std::string());
-            hc.title = c.value("title", std::string());
-            hc.workspace_id =
-                c.value("workspace", json::object()).value("id", -1);
-            hc.monitor_id = c.value("monitor", -1);
-            json at = c.value("at", json::array({0.0, 0.0}));
-            if (at.size() >= 2) {
-                hc.at[0] = at[0].get<double>();
-                hc.at[1] = at[1].get<double>();
-            }
-            json size = c.value("size", json::array({100.0, 100.0}));
-            if (size.size() >= 2) {
-                hc.size[0] = size[0].get<double>();
-                hc.size[1] = size[1].get<double>();
-            }
-            hc.floating = c.value("floating", false);
-            hc.fullscreen = c.value("fullscreen", 0);
-            hc.pinned = c.value("pinned", false);
-            hc.focus_history_id =
-                static_cast<long>(c.value("focusHistoryID", 0));
-            hc.xwayland = c.value("xwayland", false);
-            state.clients.push_back(std::move(hc));
-        }
-    } catch (const json::exception &e) {
-        klog("hyprland: failed to parse j/clients: %s", e.what());
-    }
+    state.clients =
+        parse_clients(request(state.request_socket_path, "j/clients"));
+}
+
+bool hypr_refresh_clients(HyprlandState &state) {
+    if (state.request_socket_path.empty())
+        return false;
+    std::vector<HyprClient> fresh =
+        parse_clients(request(state.request_socket_path, "j/clients"));
+    if (!client_order_differs(fresh, state.clients))
+        return false;
+    state.clients = std::move(fresh);
+    return true;
 }
 
 namespace {
