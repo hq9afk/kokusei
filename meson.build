@@ -232,7 +232,6 @@ kokusei_overlay_main_only_sources = [
   'src/modules/wallpaper.cpp',
   'src/modules/notification.cpp',
   'src/modules/logout.cpp',
-  'src/modules/logout/thunder_burst.cpp',
   'src/modules/dashboard.cpp',
   'src/modules/overview.cpp',
   'src/modules/rain.cpp',
