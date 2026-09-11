@@ -2,11 +2,10 @@
 
 #include <cstdint>
 #include <mutex>
-#include <vector>
-
 #include <pipewire/pipewire.h>
 #include <spa/param/audio/raw.h>
 #include <spa/utils/hook.h>
+#include <vector>
 
 class VisualizerAudioCapture {
   public:

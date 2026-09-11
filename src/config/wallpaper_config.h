@@ -15,6 +15,6 @@ enum class WallpaperTransition : uint8_t {
     Random,
 };
 
-// ponytail: fixed transition timing; promote to config knobs only if asked.
+// transition timing
 inline constexpr float kWallpaperTransitionDurationMs = 900.0f;
 inline constexpr float kWallpaperTransitionSmoothness = 0.3f;

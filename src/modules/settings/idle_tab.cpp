@@ -1,5 +1,5 @@
-#include "modules/settings/idle_tab.h"
 #include "modules/settings/displays_tab.h"
+#include "modules/settings/idle_tab.h"
 
 #include "render/icons.h"
 

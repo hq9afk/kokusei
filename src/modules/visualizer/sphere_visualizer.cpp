@@ -5,8 +5,8 @@
 
 #include "core/log.h"
 
-#include "modules/visualizer/visualizer_shaders.h"
 #include "modules/visualizer/sphere_visualizer.h"
+#include "modules/visualizer/visualizer_shaders.h"
 
 #include "render/gl.h"
 #include "render/palette.h"

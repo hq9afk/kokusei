@@ -10,9 +10,9 @@
 
 #include "modules/dock.h"
 #include "modules/idle.h"
-#include "modules/wallpaper.h"
 #include "modules/notification.h"
 #include "modules/osd.h"
+#include "modules/wallpaper.h"
 
 struct Config;
 

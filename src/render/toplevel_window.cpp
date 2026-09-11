@@ -1,5 +1,5 @@
-#include "render/toplevel_window.h"
 #include "render/gl.h"
+#include "render/toplevel_window.h"
 
 namespace {
 

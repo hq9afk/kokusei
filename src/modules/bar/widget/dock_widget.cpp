@@ -1,7 +1,7 @@
-#include "modules/bar/widget/dock_widget.h"
-
 #include "config/bar_config.h"
 #include "config/dock_config.h"
+
+#include "modules/bar/widget/dock_widget.h"
 
 #include "render/palette.h"
 

@@ -7,9 +7,9 @@
 #include <vector>
 #include <wayland-client.h>
 
-#include "hyprland-toplevel-export-v1-client-protocol.h"
-
 #include "render/texture.h"
+
+#include "hyprland-toplevel-export-v1-client-protocol.h"
 
 struct ToplevelExportCapture {
     wl_shm *shm = nullptr;

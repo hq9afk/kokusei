@@ -8,7 +8,6 @@
 
 #include "config/rain_config.h"
 #include "config/visualizer_config.h"
-#include "config/wallpaper_config.h"
 
 inline std::string default_wallpaper_dir() {
     const char *home = getenv("HOME");
@@ -48,8 +47,6 @@ struct Config {
     std::map<std::string, std::vector<std::string>> wallpaper_animated_columns;
     std::map<std::string, int> wallpaper_animated_column_counts;
     std::map<std::string, std::vector<std::string>> wallpaper_animated_fill_modes;
-
-    WallpaperTransition wallpaper_transition = WallpaperTransition::Fade;
 
     bool autohide = false;
     bool dock_autohide = false;

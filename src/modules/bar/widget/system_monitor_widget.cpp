@@ -1,6 +1,6 @@
-#include "modules/bar/widget/system_monitor_widget.h"
 #include "modules/bar.h"
 #include "modules/bar/panel/system_monitor_panel.h"
+#include "modules/bar/widget/system_monitor_widget.h"
 
 namespace bar_detail {
 

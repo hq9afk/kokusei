@@ -1,6 +1,6 @@
-#include "modules/bar/widget/tray_widget.h"
 #include "modules/bar.h"
 #include "modules/bar/panel/tray_panel.h"
+#include "modules/bar/widget/tray_widget.h"
 
 namespace bar_detail {
 

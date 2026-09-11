@@ -2,7 +2,6 @@
 
 #include <EGL/egl.h>
 #include <GLES3/gl32.h>
-
 #include <string>
 
 GLuint gl_compile_program(const char *vs_src, const char *fs_src,

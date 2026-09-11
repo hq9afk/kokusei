@@ -1,10 +1,9 @@
+#include <cstdio>
+#include <fstream>
 #include <pwd.h>
 #include <sys/stat.h>
 #include <sys/sysinfo.h>
 #include <unistd.h>
-
-#include <cstdio>
-#include <fstream>
 
 #include "app/user_info.h"
 

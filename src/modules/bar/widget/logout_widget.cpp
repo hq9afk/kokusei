@@ -1,5 +1,5 @@
-#include "modules/bar/widget/logout_widget.h"
 #include "modules/bar.h"
+#include "modules/bar/widget/logout_widget.h"
 
 namespace bar_detail {
 

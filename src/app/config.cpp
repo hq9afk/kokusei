@@ -137,46 +137,6 @@ T pick(const nlohmann::json &o, const char *key, const char *legacy_key,
     return o.value(legacy_key, fallback);
 }
 
-WallpaperTransition parse_wallpaper_transition(const std::string &s) {
-    if (s == "none")
-        return WallpaperTransition::None;
-    if (s == "wipe")
-        return WallpaperTransition::Wipe;
-    if (s == "disc")
-        return WallpaperTransition::Disc;
-    if (s == "stripes")
-        return WallpaperTransition::Stripes;
-    if (s == "zoom")
-        return WallpaperTransition::Zoom;
-    if (s == "honeycomb")
-        return WallpaperTransition::Honeycomb;
-    if (s == "random")
-        return WallpaperTransition::Random;
-    return WallpaperTransition::Fade;
-}
-
-const char *wallpaper_transition_name(WallpaperTransition t) {
-    switch (t) {
-    case WallpaperTransition::None:
-        return "none";
-    case WallpaperTransition::Wipe:
-        return "wipe";
-    case WallpaperTransition::Disc:
-        return "disc";
-    case WallpaperTransition::Stripes:
-        return "stripes";
-    case WallpaperTransition::Zoom:
-        return "zoom";
-    case WallpaperTransition::Honeycomb:
-        return "honeycomb";
-    case WallpaperTransition::Random:
-        return "random";
-    case WallpaperTransition::Fade:
-        break;
-    }
-    return "fade";
-}
-
 } // namespace
 
 Config load_config() {
@@ -236,9 +196,6 @@ Config load_config() {
                 if (val.is_array())
                     cfg.wallpaper_animated_fill_modes[name] =
                         val.get<std::vector<std::string>>();
-        cfg.wallpaper_transition = parse_wallpaper_transition(
-            wallpaper.value("transition", std::string("fade")));
-
         cfg.wallpaper_dir = path_expand_home(cfg.wallpaper_dir);
         cfg.wallpaper_animated_dir =
             path_expand_home(cfg.wallpaper_animated_dir);
@@ -366,7 +323,6 @@ void save_config(const Config &cfg) {
         collapsed_column_paths(cfg.wallpaper_animated_columns);
     wallpaper["animatedColumnCounts"] = cfg.wallpaper_animated_column_counts;
     wallpaper["animatedFillModes"] = cfg.wallpaper_animated_fill_modes;
-    wallpaper["transition"] = wallpaper_transition_name(cfg.wallpaper_transition);
 
     nlohmann::json displays;
     displays["defaultOsd"] = cfg.default_osd_enabled;

@@ -10,18 +10,18 @@
 #include "core/path_home.h"
 
 #include "modules/settings.h"
-#include "modules/settings/idle_tab.h"
 #include "modules/settings/displays_tab.h"
+#include "modules/settings/idle_tab.h"
+#include "modules/settings/logout_tab.h"
 #include "modules/settings/rain_tab.h"
 #include "modules/settings/visualizer_tab.h"
-#include "modules/settings/logout_tab.h"
 
 #include "render/gl.h"
 #include "render/icons.h"
 #include "render/renderer.h"
 
-#include "service/wallpaper_service.h"
 #include "service/settings_service.h"
+#include "service/wallpaper_service.h"
 
 namespace {
 

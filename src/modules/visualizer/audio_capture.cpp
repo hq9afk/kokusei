@@ -1,6 +1,5 @@
 #include <array>
 #include <cstring>
-
 #include <spa/param/audio/format-utils.h>
 #include <spa/param/audio/format.h>
 #include <spa/param/audio/raw-utils.h>

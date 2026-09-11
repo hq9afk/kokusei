@@ -4,7 +4,6 @@
 #include <sys/mman.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
-
 #include <xkbcommon/xkbcommon-names.h>
 
 #include "core/log.h"

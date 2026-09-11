@@ -262,13 +262,12 @@ void wallpaper_column_clear(WallpaperColumn &col, const WallpaperColumnGl &gl) {
 
 void wallpaper_column_set_static(WallpaperColumn &col, const WallpaperColumnGl &gl,
                                const std::string &path, int target_w,
-                               int target_h, FillMode mode,
-                               WallpaperTransition transition) {
+                               int target_h, FillMode mode) {
     if (col.path == path && col.mode == mode && col.target_w == target_w &&
         col.target_h == target_h && col.tex.id)
         return;
     col.pending_transition =
-        col.tex.id ? transition : WallpaperTransition::None;
+        col.tex.id ? WallpaperTransition::Random : WallpaperTransition::None;
     col.path = path;
     col.mode = mode;
     col.target_w = target_w;
@@ -663,8 +662,7 @@ void wallpaper_sync_from_config(WallpaperState &wp, const Config &cfg,
                 continue;
             wallpaper_column_set_animated(col, wp.gl, path, sz.w, sz.h, mode);
         } else {
-            wallpaper_column_set_static(col, wp.gl, path, sz.w, sz.h, mode,
-                                        cfg.wallpaper_transition);
+            wallpaper_column_set_static(col, wp.gl, path, sz.w, sz.h, mode);
         }
     }
 }

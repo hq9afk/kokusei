@@ -12,6 +12,8 @@
 
 #include "app/config.h"
 
+#include "config/wallpaper_config.h"
+
 #include "render/scene.h"
 #include "render/texture.h"
 #include "render/video_texture.h"

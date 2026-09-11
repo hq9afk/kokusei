@@ -1,5 +1,5 @@
-#include "render/popup_window.h"
 #include "render/gl.h"
+#include "render/popup_window.h"
 
 namespace {
 

@@ -4,10 +4,9 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <sdbus-c++/sdbus-c++.h>
 #include <string>
 #include <vector>
-
-#include <sdbus-c++/sdbus-c++.h>
 
 struct NotificationRecord {
     uint32_t id = 0;
