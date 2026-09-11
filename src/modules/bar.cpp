@@ -682,6 +682,7 @@ void BarPerMonitorModule::handle_click(WaylandState &app, MonitorOutput &mon,
                 .renderer = &app.renderer,
                 .seat = app.seat,
                 .grab_serial = serial,
+                .pointer = &app.pointer,
             };
             tray_menu_open(state.tray_menu, app.tray, *r.open_menu_for,
                            r.anchor_cell, args);

@@ -142,6 +142,7 @@ void popup_window_reposition(PopupWindowBase &base, xdg_wm_base *wm_base,
     xdg_positioner_destroy(positioner);
     xdg_surface_set_window_geometry(base.shell_surface, 0, 0, w, h);
     base.configured = false;
+    wl_surface_commit(base.surface);
 }
 
 void popup_window_request_frame(PopupWindowBase &base) {

@@ -13,12 +13,13 @@ Description column is the verb's help text as printed by `kokusei help`.
 | `dashboard` | `yuheng` | `dashboard` | toggle the control center |
 | `overview` | `liyue` | `overview` | toggle the overview (Hyprland only) |
 | `settings` | `trulla` | `settings` | toggle the settings panel |
-| `rain` | `rain` (`matrix`) | `rain` | toggle the rain overlay (`matrix_rain` and `stiletto_rain` sims selectable in settings' Rain tab) |
+| `rain` | `rain` (`matrix`) | `rain` | toggle the rain overlay |
 | `visualizer` | `resonance` | `visualizer` | toggle the audio visualizer overlay |
 | `lock` | `penance` | `lock` | lock the session |
 | `idle` | `blink` | — | no IPC verb (per-monitor module) |
 | `osd` | `spark` | — | no IPC verb (per-monitor module) |
 | `bar` | `qixing` | — | no IPC verb (per-monitor module) |
+| `dock` | — | — | no IPC verb (per-monitor module) |
 | `wallpaper` | `expanse` | — | no IPC verb (per-monitor module) |
 | `notification` | `herald` | — | no IPC verb (per-monitor module) |
 

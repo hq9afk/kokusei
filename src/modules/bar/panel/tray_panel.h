@@ -36,6 +36,7 @@ struct TrayMenuState {
     PopupWindowBase base;
     Renderer *renderer = nullptr;
     xdg_wm_base *wm_base = nullptr;
+    PointerState *pointer = nullptr;
     Scene scene;
     TextureCache tcache;
 
@@ -59,6 +60,7 @@ struct TrayMenuOpenArgs {
     Renderer *renderer = nullptr;
     wl_seat *seat = nullptr;
     uint32_t grab_serial = 0;
+    PointerState *pointer = nullptr;
 };
 
 void tray_menu_paint(TrayMenuState &state, TrayState &tray);

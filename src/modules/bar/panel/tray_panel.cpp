@@ -15,8 +15,8 @@
 
 namespace {
 
-float menu_content_height(const std::vector<MenuEntry> &level) {
-    float h = kTrayMenuItemHeight;
+float menu_content_height(const std::vector<MenuEntry> &level, bool show_back) {
+    float h = show_back ? kTrayMenuItemHeight : 0.0f;
     for (const MenuEntry &e : level)
         if (e.visible)
             h +=
@@ -56,8 +56,10 @@ std::vector<MenuEntry> *current_menu_level(TrayState &tray,
 
 int32_t tray_menu_level_height(TrayState &tray, TrayMenuState &state) {
     std::vector<MenuEntry> *level = current_menu_level(tray, state);
+    bool show_back = !state.menu_path.empty();
     float content_h =
-        level ? menu_content_height(*level) : kTrayMenuItemHeight * 2.0f;
+        level ? menu_content_height(*level, show_back)
+              : (show_back ? kTrayMenuItemHeight * 2.0f : kTrayMenuItemHeight);
     return static_cast<int32_t>(2.0f * kTrayMenuPadding + content_h + 0.5f);
 }
 
@@ -66,6 +68,8 @@ int32_t tray_menu_level_height(TrayState &tray, TrayMenuState &state) {
 void tray_menu_close(TrayMenuState &state) {
     if (!state.base.popup && !state.base.surface)
         return;
+    if (state.pointer && state.pointer->focused_surface == state.base.surface)
+        state.pointer->focused_surface = nullptr;
     popup_window_destroy(state.base);
     state.item_key.clear();
     state.menu_path.clear();
@@ -91,6 +95,7 @@ void tray_menu_open(TrayMenuState &state, TrayState &tray, const TrayItem &item,
 
     state.renderer = args.renderer;
     state.wm_base = args.wm_base;
+    state.pointer = args.pointer;
     if (!popup_window_create(state.base, args.compositor, args.wm_base,
                              args.parent_layer, anchor_cell,
                              static_cast<int32_t>(kTrayMenuWidth), menu_h,
@@ -165,24 +170,27 @@ void tray_menu_paint(TrayMenuState &state, TrayState &tray) {
                    rgba(palette::accent));
 
     float content_y = panel_y + kTrayMenuPadding;
+    bool show_back = !state.menu_path.empty();
 
-    Rect back_rect = {panel_x + kTrayMenuPadding, content_y,
-                      kTrayMenuItemHeight, kTrayMenuItemHeight};
-    const Texture *back_tex =
-        cached_icon(state.tcache, icon::chevron_left, scale);
-    if (back_tex)
-        node_add_texture(root,
-                         back_rect.x + (back_rect.w - back_tex->width) / 2.0f,
-                         back_rect.y + (back_rect.h - back_tex->height) / 2.0f,
-                         *back_tex, white);
-    state.click_regions.push_back(
-        {PanelClickKind::TrayMenuBack, back_rect, ""});
+    if (show_back) {
+        Rect back_rect = {panel_x + kTrayMenuPadding, content_y,
+                          kTrayMenuItemHeight, kTrayMenuItemHeight};
+        const Texture *back_tex =
+            cached_icon(state.tcache, icon::chevron_left, scale);
+        if (back_tex)
+            node_add_texture(
+                root, back_rect.x + (back_rect.w - back_tex->width) / 2.0f,
+                back_rect.y + (back_rect.h - back_tex->height) / 2.0f,
+                *back_tex, white);
+        state.click_regions.push_back(
+            {PanelClickKind::TrayMenuBack, back_rect, ""});
+    }
 
     static const std::vector<MenuEntry> kEmptyLevel;
     const std::vector<MenuEntry> &rows_level =
         menu_level ? *menu_level : kEmptyLevel;
 
-    float row_y = content_y + kTrayMenuItemHeight;
+    float row_y = show_back ? content_y + kTrayMenuItemHeight : content_y;
     for (const MenuEntry &entry : rows_level) {
         if (!entry.visible)
             continue;
